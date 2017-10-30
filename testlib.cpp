@@ -38,11 +38,10 @@
 
 #include "core/register_core_types.h"
 #include "drivers/register_driver_types.h"
-#include "os_x11.h"
-#include "X11/Xutil.h"
+#include "os_dummy.h"
 #include "scene/main/scene_tree.h"
-#include "servers/visual/visual_server_raster.h"
 #include "scene/register_scene_types.h"
+#include "servers/visual/visual_server_raster.h"
 #include "servers/register_server_types.h"
 #include "drivers/gles3/rasterizer_gles3.h"
 #include "project_settings.h"
@@ -50,7 +49,6 @@
 #include "os/thread_dummy.h"
 
 static ProjectSettings *globals = NULL;
-extern Engine *engine = NULL;
 
 #define OBJECT_COUNT 50
 class TestMainLoop : public MainLoop {
@@ -251,7 +249,7 @@ public:
 
 int main(int argc, char *argv[]) {
 
-  OS_X11 os;
+  OS_Dummy os;
 // Main::setup()
 	RID_OwnerBase::init_rid();
 
@@ -261,57 +259,21 @@ int main(int argc, char *argv[]) {
 	MutexDummy::make_default();
   RWLockDummy::make_default();
   IPDummy::make_default();
-
-	//os.initialize_core();
-
-  //engine = memnew(Engine); // needed in RasterizerGLES3::begin_frame() call to Engine::get_time_scale
+  // ============================
 
 	ClassDB::init();
 
 	register_core_types();
 	register_core_driver_types();
 
-	//Thread::_main_thread_id = Thread::get_caller_id();
-
-	globals = memnew(ProjectSettings);
-	//input_map = memnew(InputMap);
-
-	register_core_settings(); //here globals is present
-
-  //os.initialize_logger();
-
-	//translation_server = memnew(TranslationServer);
-	//performance = memnew(Performance);
-	//ClassDB::register_class<Performance>();
-	//globals->add_singleton(ProjectSettings::Singleton("Performance", performance));
+  // Needed for GLOBAL_DEF in VisualServer and Rasterizer
+  globals = memnew(ProjectSettings);
+  register_core_settings(); //here globals is present
 
   OS::VideoMode current_videomode = os.get_default_video_mode();
-  //OS::VideoMode current_videomode;
-
-	GLOBAL_DEF("memory/limits/multithreaded_server/rid_pool_prealloc", 60);
-	GLOBAL_DEF("network/limits/debugger_stdout/max_chars_per_second", 2048);
-	GLOBAL_DEF("display/window/size/width", current_videomode.width);
-	GLOBAL_DEF("display/window/size/height", current_videomode.height);
-	GLOBAL_DEF("display/window/dpi/allow_hidpi", false);
-	GLOBAL_DEF("display/window/size/fullscreen", current_videomode.fullscreen);
-	GLOBAL_DEF("display/window/size/resizable", current_videomode.resizable);
-	GLOBAL_DEF("display/window/size/borderless", current_videomode.borderless_window);
-  //use_vsync = GLOBAL_DEF("display/window/vsync/use_vsync", use_vsync);
-	GLOBAL_DEF("display/window/size/test_width", 0);
-	GLOBAL_DEF("display/window/size/test_height", 0);
-	GLOBAL_DEF("rendering/quality/intended_usage/framebuffer_allocation", 2);
-	GLOBAL_DEF("rendering/quality/intended_usage/framebuffer_allocation.mobile", 3);
-
-  String current_video_driver = "GLES3";
-  int current_video_driver_idx = 0;
-  GLOBAL_DEF("display/window/handheld/orientation", "landscape");
-
-	ProjectSettings::get_singleton()->register_global_defaults();
 
 //////////////////////////////////////
 // Main setup2
-
-	//os.initialize(current_videomode, current_video_driver_idx, 0);
   if( !glfwInit() )
   {
       fprintf( stderr, "Failed to initialize GLFW\n" );
@@ -340,8 +302,7 @@ int main(int argc, char *argv[]) {
 
   glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
 
-	RasterizerGLES3::register_config();
-
+  RasterizerGLES3::register_config();
 	RasterizerGLES3::make_current();
 
 	VisualServer* visual_server = memnew(VisualServerRaster);
@@ -351,25 +312,13 @@ int main(int argc, char *argv[]) {
   register_server_types();
 	Color clear = GLOBAL_DEF("rendering/environment/default_clear_color", Color(0.3, 0.3, 0.3));
 	VisualServer::get_singleton()->set_default_clear_color(clear);
-	GLOBAL_DEF("application/config/icon", String());
-	ProjectSettings::get_singleton()->set_custom_property_info("application/config/icon", PropertyInfo(Variant::STRING, "application/config/icon", PROPERTY_HINT_FILE, "*.png,*.webp"));
 
   register_scene_types();
-	GLOBAL_DEF("display/mouse_cursor/custom_image", String());
-	GLOBAL_DEF("display/mouse_cursor/custom_image_hotspot", Vector2());
-	ProjectSettings::get_singleton()->set_custom_property_info("display/mouse_cursor/custom_image", PropertyInfo(Variant::STRING, "display/mouse_cursor/custom_image", PROPERTY_HINT_FILE, "*.png,*.webp"));
 
-  ARVRServer* arvr_server = memnew(ARVRServer); // Needed for VisualServer::draw(), unfortunately
-	//VisualServer* visual_server = memnew(VisualServerRaster);
-  //Error err = Main::setup(argv[0], argc - 1, &argv[1]);
+  ARVRServer* arvr_server = memnew(ARVRServer); // Needed for VisualServer::draw(), in VisualServerViewport::draw_viewports()
 
-  //Main::start();
-
-  //os.prepare_run();
-  //Main::iteration();
   MainLoop* main_loop = memnew(TestMainLoop);
   main_loop->init(); // This create the cubes and add them to the visual server
-  //os.set_main_loop(main_loop);
   std::cout << "before main loop..." << std::endl;
 
   do {
@@ -387,33 +336,22 @@ int main(int argc, char *argv[]) {
   } while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS &&
       glfwWindowShouldClose(window) == 0);
 
-  //os.finish_run();
-  //main_loop->finish(); // does nothing
-
-  //Main::cleanup();
-
+  // Cleanup
 	unregister_scene_types();
 	unregister_server_types();
 
-  // os.finalize()
   memdelete(main_loop);
   visual_server->finish();
   memdelete(visual_server);
 
-  // Main::cleanup()
   if (arvr_server)
     memdelete(arvr_server);
 
 	if (globals)
 		memdelete(globals);
-  //if (engine)
-    //memdelete(engine);
 
 	unregister_core_driver_types();
 	unregister_core_types();
-
-	//os.clear_last_error();
-	//os.finalize_core();
 
   glfwTerminate();
 
