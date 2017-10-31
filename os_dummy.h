@@ -31,6 +31,8 @@
 #define OS_DUMMY_H
 
 #include "drivers/unix/os_unix.h"
+#include "os/rw_lock.h"
+#include "io/ip.h"
 
 class OS_Dummy : public OS {
 
@@ -78,6 +80,37 @@ public:
   virtual void delay_usec(uint32_t p_usec) const {}
   virtual uint64_t get_ticks_usec() const { return 0; }
 	OS_Dummy() {}
+};
+
+class RWLockDummy : public RWLock {
+	static RWLock *create(); ///< Create a rwlock
+
+public:
+  static void make_default();
+  virtual void read_lock() {}
+	virtual void read_unlock() {}; ///< Unlock the rwlock, let other threads continue
+	virtual Error read_try_lock() { return OK; }; ///< Attempt to lock the rwlock, OK on success, ERROR means it can't lock.
+
+	virtual void write_lock() {}; ///< Lock the rwlock, block if locked by someone else
+	virtual void write_unlock() {}; ///< Unlock the rwlock, let other thwrites continue
+	virtual Error write_try_lock() { return OK; }
+
+
+	virtual ~RWLockDummy() {}
+};
+
+class IPDummy : public IP {
+	//GDCLASS(IPDummy, IP);
+  static IP* create();
+	virtual IP_Address _resolve_hostname(const String &p_hostname, IP::Type p_type) {
+    return IP_Address();
+  }
+
+public:
+	virtual void get_local_addresses(List<IP_Address> *r_addresses) const {}
+  static void make_default();
+  IPDummy() {}
+  virtual ~IPDummy() {}
 };
 
 #endif
