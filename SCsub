@@ -5,4 +5,4 @@ common_x11 = [
 ]
 
 env.Prepend(LIBS=['glfw'])
-testlib_binary = env.Program('#bin/testlib', ['testlib.cpp'] + common_x11)
+godotvis_binary = env.Program('#bin/godotvis', ['godotvis.cpp'] + common_x11)
