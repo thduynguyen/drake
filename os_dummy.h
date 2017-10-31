@@ -35,12 +35,15 @@
 #include "io/ip.h"
 
 class OS_Dummy : public OS {
+  int window_width = 1024, window_height = 600;
 
 public:
+  OS_Dummy(int window_width, int window_height) : OS(), window_width(window_width), window_height(window_height) {}
+
 	virtual int get_video_driver_count() const { return 0; }
 	virtual const char *get_video_driver_name(int p_driver) const { return ""; }
 	virtual VideoMode get_default_video_mode() const {
-    return VideoMode(1024, 600, false);
+    return VideoMode(window_width, window_height, false);
   }
 
 	virtual void initialize(const VideoMode &p_desired, int p_video_driver, int p_audio_driver) {}
@@ -58,7 +61,7 @@ public:
   virtual void set_video_mode(const VideoMode &p_video_mode, int) {}
   virtual VideoMode get_video_mode(int p_screen = 0) const { return get_default_video_mode(); }
   virtual void get_fullscreen_mode_list(List<VideoMode> *p_list, int) const {}
-  virtual Size2 get_window_size() const { return Size2(1024, 600); }
+  virtual Size2 get_window_size() const { return Size2(window_width, window_height); }
   virtual MainLoop *get_main_loop() const { return NULL; }
   virtual bool can_draw() const { return true; }
 
