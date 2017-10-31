@@ -51,7 +51,6 @@
 static ProjectSettings *globals = NULL;
 
 #define OBJECT_COUNT 50
-class TestMainLoop : public MainLoop {
 
 	RID test_cube;
 	RID instance;
@@ -72,15 +71,7 @@ class TestMainLoop : public MainLoop {
 	float ofs;
 	bool quit;
 
-protected:
-public:
-	virtual void input_event(const Ref<InputEvent> &p_event) {
-
-		if (p_event->is_pressed())
-			quit = true;
-	}
-
-	virtual void init() {
+	void init() {
 
 		print_line("INITIALIZING TEST RENDER");
 		VisualServer *vs = VisualServer::get_singleton();
@@ -88,37 +79,6 @@ public:
 		scenario = vs->scenario_create();
 
 		Vector<Vector3> vts;
-
-		/*
-		PoolVector<Plane> sp = Geometry::build_sphere_planes(2,5,5);
-		Geometry::MeshData md2 = Geometry::build_convex_mesh(sp);
-		vts=md2.vertices;
-*/
-		/*
-
-		static const int s = 20;
-		for(int i=0;i<s;i++) {
-			Basis rot(Vector3(0,1,0),i*Math_PI/s);
-
-			for(int j=0;j<s;j++) {
-				Vector3 v;
-				v.x=Math::sin(j*Math_PI*2/s);
-				v.y=Math::cos(j*Math_PI*2/s);
-
-				vts.push_back( rot.xform(v*2 ) );
-			}
-		}*/
-		/*for(int i=0;i<100;i++) {
-
-			vts.push_back( Vector3(Math::randf()*2-1.0,Math::randf()*2-1.0,Math::randf()*2-1.0).normalized()*2);
-		}*/
-		/*
-		vts.push_back(Vector3(0,0,1));
-		vts.push_back(Vector3(0,0,-1));
-		vts.push_back(Vector3(0,1,0));
-		vts.push_back(Vector3(0,-1,0));
-		vts.push_back(Vector3(1,0,0));
-		vts.push_back(Vector3(-1,0,0));*/
 
 		vts.push_back(Vector3(1, 1, 1));
 		vts.push_back(Vector3(1, -1, 1));
@@ -134,16 +94,6 @@ public:
 		print_line("ERR: " + itos(err));
 		test_cube = vs->mesh_create();
 		vs->mesh_add_surface_from_mesh_data(test_cube, md);
-		//vs->scenario_set_debug(scenario,VS::SCENARIO_DEBUG_WIREFRAME);
-
-		/*
-		RID sm = vs->shader_create();
-		//vs->shader_set_fragment_code(sm,"OUT_ALPHA=mod(TIME,1);");
-		//vs->shader_set_vertex_code(sm,"OUT_VERTEX=IN_VERTEX*mod(TIME,1);");
-		vs->shader_set_fragment_code(sm,"OUT_DIFFUSE=vec3(1,0,1);OUT_GLOW=abs(sin(TIME));");
-		RID tcmat = vs->mesh_surface_get_material(test_cube,0);
-		vs->material_set_shader(tcmat,sm);
-		*/
 
 		List<String> cmdline = OS::get_singleton()->get_cmdline_args();
 		int object_count = OBJECT_COUNT;
@@ -212,40 +162,6 @@ public:
 		ofs = 0;
 		quit = false;
 	}
-	virtual bool iteration(float p_time) {
-
-		VisualServer *vs = VisualServer::get_singleton();
-		//Transform t;
-		//t.rotate(Vector3(0, 1, 0), ofs);
-		//t.translate(Vector3(0,0,20 ));
-		//vs->camera_set_transform(camera, t);
-
-		ofs += p_time * 0.05;
-
-		//return quit;
-
-		for (List<InstanceInfo>::Element *E = instances.front(); E; E = E->next()) {
-
-			Transform pre(Basis(E->get().rot_axis, ofs), Vector3());
-			vs->instance_set_transform(E->get().instance, pre * E->get().base);
-			/*
-			if( !E->next() ) {
-
-				vs->free( E->get().instance );
-				instances.erase(E );
-			}*/
-		}
-
-		return quit;
-	}
-
-	virtual bool idle(float p_time) {
-		return quit;
-	}
-
-	virtual void finish() {
-	}
-};
 
 int main(int argc, char *argv[]) {
 
@@ -301,6 +217,7 @@ int main(int argc, char *argv[]) {
 //}
 
   glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
+////////////////////////////////////////////////////////////////
 
   RasterizerGLES3::register_config();
 	RasterizerGLES3::make_current();
@@ -317,14 +234,13 @@ int main(int argc, char *argv[]) {
 
   ARVRServer* arvr_server = memnew(ARVRServer); // Needed for VisualServer::draw(), in VisualServerViewport::draw_viewports()
 
-  MainLoop* main_loop = memnew(TestMainLoop);
-  main_loop->init(); // This create the cubes and add them to the visual server
+  init(); // This create the cubes and add them to the visual server
   std::cout << "before main loop..." << std::endl;
 
   do {
-    glClear(GL_COLOR_BUFFER_BIT);
+    //glClear(GL_COLOR_BUFFER_BIT);
 	  std::cout << "_____________________________\n" << std::flush;
-		//VisualServer::get_singleton()->draw(); // flush visual commands
+    //VisualServer::get_singleton()->draw(); // flush visual commands
 
     VSG::scene->update_dirty_instances(); //update scene stuff
     VSG::viewport->draw_viewports();
@@ -340,7 +256,7 @@ int main(int argc, char *argv[]) {
 	unregister_scene_types();
 	unregister_server_types();
 
-  memdelete(main_loop);
+  //memdelete(main_loop);
   visual_server->finish();
   memdelete(visual_server);
 
