@@ -1,8 +1,13 @@
 Import('env')
 
+env_vis = env.Clone()
+env_vis.Append(CPPFLAGS=['-DNO_THREADS'])
+env_vis.Append(CPPFLAGS=['-DNO_PTHREADS'])
+env_vis.Append(CPPFLAGS=['-DNO_NETWORK'])
+
 common_x11 = [
     "os_dummy.cpp",
 ]
 
-env.Prepend(LIBS=['glfw'])
-godotvis_binary = env.Program('#bin/godotvis', ['godotvis.cpp'] + common_x11)
+env_vis.Prepend(LIBS=['glfw'])
+godotvis_binary = env_vis.Program('#bin/godotvis', ['godotvis.cpp'] + common_x11)
