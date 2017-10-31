@@ -64,9 +64,7 @@ struct InstanceInfo {
 	Vector3 rot_axis;
 };
 
-void init() {
-
-	print_line("INITIALIZING TEST RENDER");
+void SetupScene() {
 	VisualServer *vs = VisualServer::get_singleton();
 	RID test_cube = vs->get_test_cube();
 	RID scenario = vs->scenario_create();
@@ -88,11 +86,7 @@ void init() {
 	test_cube = vs->mesh_create();
 	vs->mesh_add_surface_from_mesh_data(test_cube, md);
 
-	List<String> cmdline = OS::get_singleton()->get_cmdline_args();
 	int object_count = OBJECT_COUNT;
-	if (cmdline.size() > 0 && cmdline[cmdline.size() - 1].to_int()) {
-		object_count = cmdline[cmdline.size() - 1].to_int();
-	};
 
 	for (int i = 0; i < object_count; i++) {
 
@@ -154,19 +148,19 @@ void init() {
 class GodotRenderer {
   int window_width, window_height;
   //TODO: Use nullptr when C++11 is enabled
-  OS_Dummy os;
-  GLFWwindow* window = NULL;
+  OS_Dummy os_;
+  GLFWwindow* window_ = NULL;
   VisualServer* visual_server = NULL;
   ARVRServer* arvr_server = NULL;
   ProjectSettings* globals = NULL;
 
 public:
 	GodotRenderer(int window_width, int window_height)
-		: window_width(window_width), window_height(window_height) {}
+		: window_width(window_width), window_height(window_height), os_(window_width, window_height) {}
 
 	void Initialize() {
-		Init_gl_context();
-		Init_godot();
+		InitGLContext();
+		InitGodot();
   }
 
   void Draw() {
@@ -180,22 +174,22 @@ public:
       glClear(GL_COLOR_BUFFER_BIT);
       Draw();
       // TODO: modify this for render_to_texture
-      glfwSwapBuffers(window);
+      glfwSwapBuffers(window_);
       glfwPollEvents();
-    } while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS &&
-         glfwWindowShouldClose(window) == 0);
+    } while (glfwGetKey(window_, GLFW_KEY_ESCAPE) != GLFW_PRESS &&
+         glfwWindowShouldClose(window_) == 0);
   }
 
   void Cleanup() {
     Cleanup_godot();
-    Cleanup_gl();
+    CleanupGL();
   }
 
-  GLFWwindow* const get_glfw_window() const { return window; }
+  GLFWwindow* const get_glfw_window() const { return window_; }
 
 private:
   // TODO: modify this for render_to_texture
-  Error Init_gl_context() {
+  Error InitGLContext() {
 	  if (!glfwInit()) {
 		  fprintf(stderr, "Failed to initialize GLFW\n");
 		  return FAILED;
@@ -206,19 +200,19 @@ private:
 	  glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // To make MacOS happy; should not be needed
 	  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // We don't want the old OpenGL
 
-	  // Open a window and create its OpenGL context
-	  window = glfwCreateWindow(window_width,
-			  window_height, "Godot Render Window", NULL, NULL);
-	  if (window == NULL) {
-		  fprintf(stderr, "Failed to open GLFW window.\n");
+	  // Open a window_ and create its OpenGL context
+	  window_ = glfwCreateWindow(window_width,
+			  window_height, "Godot Render window_", NULL, NULL);
+	  if (window_ == NULL) {
+		  fprintf(stderr, "Failed to open GLFW window_.\n");
 		  glfwTerminate();
 		  return FAILED;
 	  }
-	  glfwMakeContextCurrent(window); // Initialize GLEW
-	  glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
+	  glfwMakeContextCurrent(window_); // Initialize GLEW
+	  glfwSetInputMode(window_, GLFW_STICKY_KEYS, GL_TRUE);
   }
 
-  void Init_godot() {
+  void InitGodot() {
     // Main::setup()
     RID_OwnerBase::init_rid();
 
@@ -278,21 +272,19 @@ private:
     unregister_core_types();
   }
 
-  void Cleanup_gl() {
+  void CleanupGL() {
     glfwTerminate();
   }
 };
 
 int main(int argc, char *argv[]) {
-
-  GodotRenderer renderer(1024, 600);
+  GodotRenderer renderer(640, 480);
   renderer.Initialize();
-	init(); // This create the cubes and add them to the visual server
-	std::cout << "before main loop..." << std::endl;
+	SetupScene(); // This create the cubes and add them to the visual server
 
   renderer.MainLoop();
 
   renderer.Cleanup();
 
-	return 0; //os.get_exit_code();
+	return 0; //os_.get_exit_code();
 }
