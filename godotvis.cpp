@@ -36,6 +36,7 @@
 // Define this macro so glad.h will be included in shader_gles3.h
 #define GLES3_INCLUDE_H "glad/glad.h"
 
+#include "core/error_list.h"
 #include "core/register_core_types.h"
 #include "drivers/gles3/rasterizer_gles3.h"
 #include "drivers/register_driver_types.h"
@@ -53,7 +54,6 @@
 // included by shader_gles3.h in rasterizer.gles3.h
 #include <GLFW/glfw3.h>
 
-static ProjectSettings *globals = NULL;
 
 #define OBJECT_COUNT 50
 
@@ -151,114 +151,148 @@ void init() {
 	//light = vs->instance_create( lightaux );
 }
 
-int main(int argc, char *argv[]) {
+class GodotRenderer {
+  int window_width, window_height;
+  //TODO: Use nullptr when C++11 is enabled
+  OS_Dummy os;
+  GLFWwindow* window = NULL;
+  VisualServer* visual_server = NULL;
+  ARVRServer* arvr_server = NULL;
+  ProjectSettings* globals = NULL;
 
-	OS_Dummy os;
-	// Main::setup()
-	RID_OwnerBase::init_rid();
+public:
+	GodotRenderer(int window_width, int window_height)
+		: window_width(window_width), window_height(window_height) {}
 
-	/// THESE are needed for ObjectDB operations
-	ThreadDummy::make_default();
-	SemaphoreDummy::make_default();
-	MutexDummy::make_default();
-	RWLockDummy::make_default();
-	IPDummy::make_default();
-	// ============================
+	void Initialize() {
+		Init_gl_context();
+		Init_godot();
+  }
 
-	ClassDB::init();
-
-	register_core_types();
-	register_core_driver_types();
-
-	// Needed for GLOBAL_DEF in VisualServer and Rasterizer
-	globals = memnew(ProjectSettings);
-	register_core_settings(); //here globals is present
-
-	OS::VideoMode current_videomode = os.get_default_video_mode();
-
-	//////////////////////////////////////
-	// Main setup2
-	if (!glfwInit()) {
-		fprintf(stderr, "Failed to initialize GLFW\n");
-		return -1;
-	}
-	glfwWindowHint(GLFW_SAMPLES, 4); // 4x antialiasing
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3); // We want OpenGL 3.3
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // To make MacOS happy; should not be needed
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // We don't want the old OpenGL
-
-	// Open a window and create its OpenGL context
-	GLFWwindow *window; // (In the accompanying source code, this variable is global for simplicity)
-	window = glfwCreateWindow(current_videomode.width, current_videomode.height, "Tutorial 01", NULL, NULL);
-	if (window == NULL) {
-		fprintf(stderr, "Failed to open GLFW window. If you have an Intel GPU, they are not 3.3 compatible. Try the 2.1 version of the tutorials.\n");
-		glfwTerminate();
-		return -1;
-	}
-	glfwMakeContextCurrent(window); // Initialize GLEW
-	//glewExperimental=true; // Needed in core profile
-	//if (glewInit() != GLEW_OK) {
-	//fprintf(stderr, "Failed to initialize GLEW\n");
-	//return -1;
-	//}
-
-	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
-	////////////////////////////////////////////////////////////////
-
-	RasterizerGLES3::register_config();
-	RasterizerGLES3::make_current();
-
-	VisualServer *visual_server = memnew(VisualServerRaster);
-	visual_server->init();
-
-	//=====================================
-	register_server_types();
-	Color clear = GLOBAL_DEF("rendering/environment/default_clear_color", Color(0.3, 0.3, 0.3));
-	VisualServer::get_singleton()->set_default_clear_color(clear);
-
-	register_scene_types();
-
-	ARVRServer *arvr_server = memnew(ARVRServer); // Needed for VisualServer::draw(), in VisualServerViewport::draw_viewports()
-
-	init(); // This create the cubes and add them to the visual server
-	std::cout << "before main loop..." << std::endl;
-
-	do {
-		//glClear(GL_COLOR_BUFFER_BIT);
-		std::cout << "_____________________________\n"
-				  << std::flush;
-		//VisualServer::get_singleton()->draw(); // flush visual commands
-
+  void Draw() {
 		VSG::scene->update_dirty_instances(); //update scene stuff
 		VSG::viewport->draw_viewports();
 		VSG::scene->render_probes();
+  }
 
-		std::cout << "*****************************\n"
-				  << std::flush;
-		glfwSwapBuffers(window);
-		glfwPollEvents();
-	} while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS &&
-			 glfwWindowShouldClose(window) == 0);
+  void MainLoop() {
+    do {
+      glClear(GL_COLOR_BUFFER_BIT);
+      Draw();
+      // TODO: modify this for render_to_texture
+      glfwSwapBuffers(window);
+      glfwPollEvents();
+    } while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS &&
+         glfwWindowShouldClose(window) == 0);
+  }
 
-	// Cleanup
-	unregister_scene_types();
-	unregister_server_types();
+  void Cleanup() {
+    Cleanup_godot();
+    Cleanup_gl();
+  }
 
-	//memdelete(main_loop);
-	visual_server->finish();
-	memdelete(visual_server);
+  GLFWwindow* const get_glfw_window() const { return window; }
 
-	if (arvr_server)
-		memdelete(arvr_server);
+private:
+  // TODO: modify this for render_to_texture
+  Error Init_gl_context() {
+	  if (!glfwInit()) {
+		  fprintf(stderr, "Failed to initialize GLFW\n");
+		  return FAILED;
+	  }
+	  glfwWindowHint(GLFW_SAMPLES, 4); // 4x antialiasing
+	  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3); // We want OpenGL 3.3
+	  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	  glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // To make MacOS happy; should not be needed
+	  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // We don't want the old OpenGL
 
-	if (globals)
-		memdelete(globals);
+	  // Open a window and create its OpenGL context
+	  window = glfwCreateWindow(window_width,
+			  window_height, "Godot Render Window", NULL, NULL);
+	  if (window == NULL) {
+		  fprintf(stderr, "Failed to open GLFW window.\n");
+		  glfwTerminate();
+		  return FAILED;
+	  }
+	  glfwMakeContextCurrent(window); // Initialize GLEW
+	  glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
+  }
 
-	unregister_core_driver_types();
-	unregister_core_types();
+  void Init_godot() {
+    // Main::setup()
+    RID_OwnerBase::init_rid();
 
-	glfwTerminate();
+    /// THESE are needed for ObjectDB operations
+    ThreadDummy::make_default();
+    SemaphoreDummy::make_default();
+    MutexDummy::make_default();
+    RWLockDummy::make_default();
+    IPDummy::make_default();
+    // ============================
+
+    ClassDB::init();
+
+    register_core_types();
+    register_core_driver_types();
+
+    // Needed for GLOBAL_DEF in VisualServer and Rasterizer
+    globals = memnew(ProjectSettings);
+    register_core_settings(); //here globals is present
+
+    //////////////////////////////////////
+    // Main setup2
+    ////////////////////////////////////////////////////////////////
+
+    RasterizerGLES3::register_config();
+    RasterizerGLES3::make_current();
+
+    visual_server = memnew(VisualServerRaster);
+    visual_server->init();
+
+    //=====================================
+    register_server_types();
+    Color clear = GLOBAL_DEF("rendering/environment/default_clear_color", Color(0.3, 0.3, 0.3));
+    VisualServer::get_singleton()->set_default_clear_color(clear);
+
+    register_scene_types();
+
+    arvr_server = memnew(ARVRServer); // Needed for VisualServer::draw(), in VisualServerViewport::draw_viewports()
+  }
+
+  void Cleanup_godot() {
+    // Cleanup
+    unregister_scene_types();
+    unregister_server_types();
+
+    //memdelete(main_loop);
+    visual_server->finish();
+    memdelete(visual_server);
+
+    if (arvr_server)
+      memdelete(arvr_server);
+
+    if (globals)
+      memdelete(globals);
+
+    unregister_core_driver_types();
+    unregister_core_types();
+  }
+
+  void Cleanup_gl() {
+    glfwTerminate();
+  }
+};
+
+int main(int argc, char *argv[]) {
+
+  GodotRenderer renderer(1024, 600);
+  renderer.Initialize();
+	init(); // This create the cubes and add them to the visual server
+	std::cout << "before main loop..." << std::endl;
+
+  renderer.MainLoop();
+
+  renderer.Cleanup();
 
 	return 0; //os.get_exit_code();
 }
