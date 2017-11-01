@@ -1,7 +1,7 @@
 # godotvis
 This project aims to extract just the graphics rendering part of Godot as a standalone application. 
 This is the first step to see if we can use Godot as a graphics renderer inside Drake.
-The high-level goal is to have a photo-realisitic rendering system to simulate camera images, and we hope to use Godot for that.
+The high-level goal is to have a photo-realisitic rendering system to simulate camera images, and we hope Godot might be powerful enough for that.
 
 ## INSTALL
 - clone Godot 3.0 from its master branch here: https://github.com/godotengine/godot
