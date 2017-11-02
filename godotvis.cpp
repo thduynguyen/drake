@@ -1,32 +1,3 @@
-/*************************************************************************/
-/*  godot_x11.cpp                                                        */
-/*************************************************************************/
-/*                       This file is part of:                           */
-/*                           GODOT ENGINE                                */
-/*                      https://godotengine.org                          */
-/*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
-/*                                                                       */
-/* Permission is hereby granted, free of charge, to any person obtaining */
-/* a copy of this software and associated documentation files (the       */
-/* "Software"), to deal in the Software without restriction, including   */
-/* without limitation the rights to use, copy, modify, merge, publish,   */
-/* distribute, sublicense, and/or sell copies of the Software, and to    */
-/* permit persons to whom the Software is furnished to do so, subject to */
-/* the following conditions:                                             */
-/*                                                                       */
-/* The above copyright notice and this permission notice shall be        */
-/* included in all copies or substantial portions of the Software.       */
-/*                                                                       */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,       */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF    */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.*/
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY  */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,  */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
-/*************************************************************************/
 #include <limits.h>
 #include <locale.h>
 #include <stdlib.h>
@@ -34,11 +5,13 @@
 #include <iostream>
 
 #include "godot_renderer.h"
+#include "scene/3d/mesh_instance.h"
 
-#define OBJECT_COUNT 50
+#define DEGREE M_PI/180.0
+
+String path = "/home/duynguyen/git/godot-demo-projects/3d/material_testers/";
 
 struct InstanceInfo {
-
 	RID instance;
 	Transform base;
 	Vector3 rot_axis;
@@ -46,8 +19,12 @@ struct InstanceInfo {
 
 void SetupScene() {
 	VisualServer *vs = VisualServer::get_singleton();
-	RID test_cube = vs->get_test_cube();
 	RID scenario = vs->scenario_create();
+
+  String filename = path + "godot_ball.mesh";
+  // This calls all the way down to RasterizerStorageGLES3::mesh_add_surface(), which initialize VAO
+  // RasterizerStorageGLES3::mesh_add_surface <-- ArrayMesh::add_surface <-- ArrayMesh::_setv() <-- res->set() <-- ResourceInteractiveLoaderBinary::poll()
+  Ref<Mesh> mesh = ResourceLoader::load(filename);
 
 	Vector<Vector3> vts;
 
@@ -63,28 +40,44 @@ void SetupScene() {
 	Geometry::MeshData md;
 	Error err = QuickHull::build(vts, md);
 	print_line("ERR: " + itos(err));
-	test_cube = vs->mesh_create();
-	vs->mesh_add_surface_from_mesh_data(test_cube, md);
+  //RID test_cube = vs->get_test_cube();
+  RID test_cube = vs->mesh_create();
+  vs->mesh_add_surface_from_mesh_data(test_cube, md);
 
-	int object_count = OBJECT_COUNT;
+  RID instance = vs->instance_create2(test_cube, scenario);
 
-	for (int i = 0; i < object_count; i++) {
+  //RID mesh_id = mesh->get_rid();
+  SpatialMaterial* material = memnew(SpatialMaterial);
+  material->set_albedo(Color(1.0, 0., 0.));
+  vs->mesh_surface_set_material(test_cube, 0, material->get_rid());
+  std::cout << "NUM SURFACES: " << vs->mesh_get_surface_count(test_cube) << std::endl;
 
-		InstanceInfo ii;
+  // This calls vs->create_instance() in VisualInstance constructor
+  // Using instance_create2() doesn't work, probably because the object_id is not attached to the instance
+  // (VS::instance_attach_object_instance_id call in VisualInstance's ctor)
+  // The instance is created and linked with the scenario, however, its data is missing.
+  // Doing this is not ideal, however, as nobody manages this pointer, it's not freed at the end
+  // hence the program doesn't exit naturally.
+  MeshInstance *mesh_instance = memnew(MeshInstance);
+  mesh_instance->set_mesh(mesh);
+  // put this instance into the scenario. This is important as viewport's render_scene
+  // render_camera function checks these instances and culls them out
+  vs->instance_set_scenario(mesh_instance->get_instance(), scenario);
+  //RID mesh_instance = vs->instance_create2(mesh->get_rid(), scenario);
+  vs->mesh_surface_set_material(mesh->get_rid(), 0, material->get_rid());
+  Rect3 aabb = mesh->get_aabb();
+  Vector3 position = aabb.position;
 
-		ii.instance = vs->instance_create2(test_cube, scenario);
-
-		ii.base.translate(Math::random(-20, 20), Math::random(-20, 20), Math::random(-20, 18));
-		ii.base.rotate(Vector3(0, 1, 0), Math::randf() * Math_PI);
-		ii.base.rotate(Vector3(1, 0, 0), Math::randf() * Math_PI);
-		vs->instance_set_transform(ii.instance, ii.base);
-
-		ii.rot_axis = Vector3(Math::random(-1, 1), Math::random(-1, 1), Math::random(-1, 1)).normalized();
-	}
+  //vs->instance_set_transform(instance, Transform(Basis(), Vector3()));
 
 	RID camera = vs->camera_create();
 
-	// 		vs->camera_set_perspective( camera, 60.0,0.1, 100.0 );
+  //Transform Tc_in = Transform(Basis(Vector3(0.0, -90.0 * DEGREE, 0.0)).transposed(), Vector3(20.0, 0.0, 0.0));
+  Transform Tc;
+  Tc.set_look_at(Vector3(20., 0., 0.), position, Vector3(0, 1, 0));
+  vs->camera_set_transform(camera, Tc);
+	vs->camera_set_perspective(camera, 65, 0.1, 100);
+
 
 	RID viewport = vs->viewport_create();
 	Size2i screen_size = OS::get_singleton()->get_window_size();
@@ -93,8 +86,7 @@ void SetupScene() {
 	vs->viewport_set_active(viewport, true);
 	vs->viewport_attach_camera(viewport, camera);
 	vs->viewport_set_scenario(viewport, scenario);
-	vs->camera_set_transform(camera, Transform(Basis(), Vector3(0, 3, 30)));
-	vs->camera_set_perspective(camera, 60, 0.1, 1000);
+
 
 	/*
 		RID lightaux = vs->light_create( VisualServer::LIGHT_OMNI );
@@ -112,7 +104,7 @@ void SetupScene() {
 	RID light = vs->instance_create2(lightaux, scenario);
 	Transform lla;
 	//lla.set_look_at(Vector3(),Vector3(1,-1,1),Vector3(0,1,0));
-	lla.set_look_at(Vector3(), Vector3(-0.000000, -0.836026, -0.548690), Vector3(0, 1, 0));
+	lla.set_look_at(Vector3(20., 0, 0), position, Vector3(0, 1, 0));
 
 	vs->instance_set_transform(light, lla);
 
