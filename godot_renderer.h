@@ -15,6 +15,8 @@
 #include "scene/register_scene_types.h"
 #include "servers/register_server_types.h"
 #include "servers/visual/visual_server_raster.h"
+#include "drivers/unix/file_access_unix.h"
+#include "drivers/unix/dir_access_unix.h"
 
 // TL;DR: GLFW has to be included here, after rasterizer_gles3.
 // glfw needs to be included *after* glad.h, which is
@@ -98,6 +100,16 @@ private:
     MutexDummy::make_default();
     RWLockDummy::make_default();
     IPDummy::make_default();
+
+    // Do we need this? Can we just pass resources directly from Drake?
+    FileAccess::make_default<FileAccessUnix>(FileAccess::ACCESS_RESOURCES);
+    FileAccess::make_default<FileAccessUnix>(FileAccess::ACCESS_USERDATA);
+    FileAccess::make_default<FileAccessUnix>(FileAccess::ACCESS_FILESYSTEM);
+    //FileAccessBufferedFA<FileAccessUnix>::make_default();
+    //TODO: Change to DirAccessOSX for osx platfom
+    DirAccess::make_default<DirAccessUnix>(DirAccess::ACCESS_RESOURCES);
+    DirAccess::make_default<DirAccessUnix>(DirAccess::ACCESS_USERDATA);
+    DirAccess::make_default<DirAccessUnix>(DirAccess::ACCESS_FILESYSTEM);
     // ============================
 
     ClassDB::init();
