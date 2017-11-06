@@ -6,6 +6,7 @@
 
 #include "godot_renderer.h"
 #include "scene/3d/mesh_instance.h"
+#include "scene/3d/light.h"
 
 #define DEGREE M_PI/180.0
 
@@ -41,10 +42,10 @@ void SetupScene() {
 
 
   SpatialMaterial* material = memnew(SpatialMaterial);
-  material->set_albedo(Color(0.0, 1., 0.));
-  material->set_specular(0.8);
-  material->set_metallic(0.2);
-  material->set_roughness(0.5);
+  material->set_albedo(Color(0.81, 0.58, 0.36, 1.0));
+  material->set_specular(0.5);
+  material->set_metallic(0.48);
+  material->set_roughness(0.28);
   SpatialMaterial* material2 = memnew(SpatialMaterial);
   material2->set_albedo(Color(1.0, 0., 0.));
   // IMPORTANT: This calls to SpatialMaterial::_update_shader(). Without this materials wont' work
@@ -104,33 +105,13 @@ void SetupScene() {
 
   //vs->instance_set_transform(instance, Transform(Basis(), Vector3()));
 
-	/*
-		RID lightaux = vs->light_create( VisualServer::LIGHT_OMNI );
-		vs->light_set_var( lightaux, VisualServer::LIGHT_VAR_RADIUS, 80 );
-		vs->light_set_var( lightaux, VisualServer::LIGHT_VAR_ATTENUATION, 1 );
-		vs->light_set_var( lightaux, VisualServer::LIGHT_VAR_ENERGY, 1.5 );
-		light = vs->instance_create( lightaux );
-		*/
-	RID lightaux;
-
-	lightaux = vs->light_create(VisualServer::LIGHT_DIRECTIONAL);
-	//vs->light_set_color( lightaux, VisualServer::LIGHT_COLOR_AMBIENT, Color(0.0,0.0,0.0) );
-	vs->light_set_color(lightaux, Color(1.0, 1.0, 1.0));
-	//vs->light_set_shadow( lightaux, true );
-	RID light = vs->instance_create2(lightaux, scenario);
-	Transform lla;
-  lla.set_look_at(Vector3(),Vector3(1,-1,1),Vector3(0,1,0));
-	//lla.set_look_at(Vector3(20., 0, 0), position, Vector3(0, 1, 0));
-
-	vs->instance_set_transform(light, lla);
-
-	lightaux = vs->light_create(VisualServer::LIGHT_OMNI);
-	//vs->light_set_color( lightaux, VisualServer::LIGHT_COLOR_AMBIENT, Color(0.0,0.0,1.0) );
-	vs->light_set_color(lightaux, Color(1.0, 1.0, 0.0));
-	vs->light_set_param(lightaux, VisualServer::LIGHT_PARAM_RANGE, 4);
-	vs->light_set_param(lightaux, VisualServer::LIGHT_PARAM_ENERGY, 8);
-	//vs->light_set_shadow( lightaux, true );
-	//light = vs->instance_create( lightaux );
+  OmniLight* light = memnew(OmniLight());
+  light->set_color(Color(1.0, 1.0, 1.0));
+  light->set_param(Light::PARAM_ENERGY, 3.0);
+  light->set_param(Light::PARAM_SPECULAR, 0.5);
+  light->set_param(Light::PARAM_RANGE, 50.0);
+  vs->instance_set_transform(light->get_instance(), Transform(Basis(), Vector3(12.5, 5., 0.)));
+  vs->instance_set_scenario(light->get_instance(), scenario);
 }
 
 int main(int argc, char *argv[]) {
