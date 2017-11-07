@@ -18,7 +18,7 @@ struct InstanceInfo {
   Vector3 rot_axis;
 };
 
-void SetupScene() {
+void SetupScene(const GodotRenderer& renderer) {
   VisualServer *vs = VisualServer::get_singleton();
   RID scenario = vs->scenario_create();
 
@@ -31,7 +31,7 @@ void SetupScene() {
   vs->camera_set_transform(camera, Tc);
   vs->camera_set_perspective(camera, 65, 0.1, 100);
 
-  RID viewport = vs->viewport_create();
+  RID viewport = renderer.get_viewport()->get_viewport_rid();
   Size2i screen_size = OS::get_singleton()->get_window_size();
   vs->viewport_set_size(viewport, screen_size.x, screen_size.y);
   vs->viewport_attach_to_screen(viewport, Rect2(Vector2(), screen_size));
@@ -132,7 +132,7 @@ void SetupScene() {
 int main(int argc, char *argv[]) {
   GodotRenderer renderer(640, 480);
   renderer.Initialize();
-  SetupScene(); // This create the cubes and add them to the visual server
+  SetupScene(renderer); // This create the cubes and add them to the visual server
 
   renderer.MainLoop();
 
