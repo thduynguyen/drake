@@ -43,9 +43,11 @@ void SetupScene() {
 
   SpatialMaterial* material = memnew(SpatialMaterial);
   material->set_albedo(Color(0.81, 0.58, 0.36, 1.0));
-  material->set_specular(0.5);
-  material->set_metallic(0.48);
-  material->set_roughness(0.28);
+  material->set_specular(1.0);
+  material->set_metallic(0.0);
+  material->set_roughness(0.0);
+  Ref<Texture> texture = ResourceLoader::load(path + "texture_wood.png");
+  material->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
   SpatialMaterial* material2 = memnew(SpatialMaterial);
   material2->set_albedo(Color(1.0, 0., 0.));
   // IMPORTANT: This calls to SpatialMaterial::_update_shader(). Without this materials wont' work
@@ -61,20 +63,21 @@ void SetupScene() {
   //for (int i = 0; i<4; ++i)
     //vs->mesh_surface_set_material(mesh->get_rid(), i, material->get_rid());
 
-	Vector<Vector3> vts;
+#if 0
+  Vector<Vector3> vts;
 
-	vts.push_back(Vector3(1, 1, 1));
-	vts.push_back(Vector3(1, -1, 1));
-	vts.push_back(Vector3(-1, 1, 1));
-	vts.push_back(Vector3(-1, -1, 1));
-	vts.push_back(Vector3(1, 1, -1));
-	vts.push_back(Vector3(1, -1, -1));
-	vts.push_back(Vector3(-1, 1, -1));
-	vts.push_back(Vector3(-1, -1, -1));
+  vts.push_back(Vector3(1, 1, 1));
+  vts.push_back(Vector3(1, -1, 1));
+  vts.push_back(Vector3(-1, 1, 1));
+  vts.push_back(Vector3(-1, -1, 1));
+  vts.push_back(Vector3(1, 1, -1));
+  vts.push_back(Vector3(1, -1, -1));
+  vts.push_back(Vector3(-1, 1, -1));
+  vts.push_back(Vector3(-1, -1, -1));
 
-	Geometry::MeshData md;
-	Error err = QuickHull::build(vts, md);
-	print_line("ERR: " + itos(err));
+  Geometry::MeshData md;
+  Error err = QuickHull::build(vts, md);
+  print_line("ERR: " + itos(err));
   //RID test_cube = vs->get_test_cube();
   RID test_cube = vs->mesh_create();
   vs->mesh_add_surface_from_mesh_data(test_cube, md);
@@ -83,6 +86,7 @@ void SetupScene() {
   //RID mesh_id = mesh->get_rid();
   vs->mesh_surface_set_material(test_cube, 0, material2->get_rid());
   std::wcout << "NUM SURFACES: " << vs->mesh_get_surface_count(test_cube) << std::endl;
+#endif
 
   // This calls vs->create_instance() in VisualInstance constructor
   // Using instance_create2() doesn't work, probably because the object_id is not attached to the instance
@@ -102,6 +106,9 @@ void SetupScene() {
   mesh_instance->set_surface_material(1, material);
   mesh_instance->set_surface_material(2, material);
   mesh_instance->set_surface_material(3, material);
+  Basis R(Vector3(0.0, 1.0, 0.0), 90.0*DEGREE);
+  R = Basis(Vector3(0.0, 0.0, 1.0), -10.0*DEGREE)*R;
+  vs->instance_set_transform(mesh_instance->get_instance(), Transform(R, Vector3(5, -5, -3.)));
 
   //vs->instance_set_transform(instance, Transform(Basis(), Vector3()));
 
@@ -112,6 +119,16 @@ void SetupScene() {
   light->set_param(Light::PARAM_RANGE, 50.0);
   vs->instance_set_transform(light->get_instance(), Transform(Basis(), Vector3(12.5, 5., 0.)));
   vs->instance_set_scenario(light->get_instance(), scenario);
+
+  String skyfilename = path + "park.hdr";
+  Ref<Texture> sky_texture = ResourceLoader::load(skyfilename);
+  PanoramaSky* sky = memnew(PanoramaSky);
+  sky->set_panorama(sky_texture);
+  Environment* env = memnew(Environment());
+  env->set_background(Environment::BG_SKY);
+  env->set_sky(sky);
+
+  vs->camera_set_environment(camera, env->get_rid());
 }
 
 int main(int argc, char *argv[]) {
