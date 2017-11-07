@@ -59,7 +59,7 @@ public:
   }
 
   void Cleanup() {
-    Cleanup_godot();
+    CleanupGodot();
     CleanupGL();
   }
 
@@ -141,7 +141,7 @@ private:
     arvr_server = memnew(ARVRServer); // Needed for VisualServer::draw(), in VisualServerViewport::draw_viewports()
   }
 
-  void Cleanup_godot() {
+  void CleanupGodot() {
     // Cleanup
     unregister_scene_types();
     unregister_server_types();
