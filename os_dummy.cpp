@@ -1,17 +1,17 @@
 #include "os_dummy.h"
 
 RWLock *RWLockDummy::create() {
-	return memnew(RWLockDummy);
+  return memnew(RWLockDummy);
 };
 
 void RWLockDummy::make_default() {
-	RWLock::create_func = &RWLockDummy::create;
+  RWLock::create_func = &RWLockDummy::create;
 };
 
 IP *IPDummy::create() {
-	return memnew(IPDummy);
+  return memnew(IPDummy);
 };
 
 void IPDummy::make_default() {
-	IP::_create = &IPDummy::create;
+  IP::_create = &IPDummy::create;
 };
