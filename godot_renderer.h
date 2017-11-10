@@ -32,7 +32,7 @@ class GodotRenderer {
   ARVRServer *arvr_server = NULL;
   ProjectSettings *globals = NULL;
   Physics2DServer* physics_2d_server = NULL; //!< Unfortunately this is needed in Viewport's ctor
-  Viewport* viewport_ = NULL;
+  PhysicsServer* physics_server = NULL; //!< Unfortunately this is needed in Viewport's ctor
 
 public:
   GodotRenderer(int window_width, int window_height)
@@ -46,21 +46,21 @@ public:
   void Draw() {
     VSG::scene->update_dirty_instances(); //update scene stuff
     VSG::viewport->draw_viewports();
-    VSG::scene->render_probes();
+    //VSG::scene->render_probes();
   }
 
   void MainLoop() {
-    //do {
+    do {
       glClear(GL_COLOR_BUFFER_BIT);
       Draw();
-      Ref<Image> image = viewport_->get_texture()->get_data();
-      image->save_png("/home/duynguyen/Downloads/texture.png");
+      //Ref<Image> image = viewport_->get_texture()->get_data();
+      //image->save_png("/home/duynguyen/Downloads/texture.png");
 
       // TODO: modify this for render_to_texture
-      //glfwSwapBuffers(window_);
-      //glfwPollEvents();
-    //} while (glfwGetKey(window_, GLFW_KEY_ESCAPE) != GLFW_PRESS &&
-         //glfwWindowShouldClose(window_) == 0);
+      glfwSwapBuffers(window_);
+      glfwPollEvents();
+    } while (glfwGetKey(window_, GLFW_KEY_ESCAPE) != GLFW_PRESS &&
+         glfwWindowShouldClose(window_) == 0);
   }
 
   void Cleanup() {
@@ -69,7 +69,7 @@ public:
   }
 
   GLFWwindow *const get_glfw_window() const { return window_; }
-  Viewport* const get_viewport() const { return viewport_; }
+  //Viewport* const get_viewport() const { return viewport_; }
 
 private:
   // TODO: modify this for render_to_texture
@@ -83,7 +83,7 @@ private:
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // To make MacOS happy; should not be needed
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // We don't want the old OpenGL
-    glfwWindowHint(GLFW_VISIBLE, GL_FALSE);
+    //glfwWindowHint(GLFW_VISIBLE, GL_FALSE);
 
     // Open a window_ and create its OpenGL context
     window_ = glfwCreateWindow(window_width,
@@ -147,17 +147,15 @@ private:
 
     arvr_server = memnew(ARVRServer); // Needed for VisualServer::draw(), in VisualServerViewport::draw_viewports()
 
-    physics_2d_server = Physics2DServerManager::new_server(ProjectSettings::get_singleton()->get(Physics2DServerManager::setting_property_name));
-    if (!physics_2d_server) {
-      // Physics server not found, Use the default physics
-      physics_2d_server = Physics2DServerManager::new_default_server();
-    }
-    viewport_ = memnew(Viewport);
+    physics_2d_server = Physics2DServerManager::new_default_server();
+    /// 3D Physics Server
+		physics_server = PhysicsServerManager::new_default_server();
+    //viewport_ = memnew(Viewport);
   }
 
   void CleanupGodot() {
-    if (viewport_)
-      memdelete(viewport_);
+    //if (viewport_)
+      //memdelete(viewport_);
 
     if (physics_2d_server)
       memdelete(physics_2d_server);
