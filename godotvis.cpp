@@ -7,18 +7,94 @@
 #include "godot_renderer.h"
 #include "scene/3d/light.h"
 #include "scene/3d/mesh_instance.h"
+#include "scene/3d/camera.h"
 
 #define DEGREE M_PI / 180.0
 
 String path = "/home/duynguyen/git/godot-demo-projects/3d/material_testers/";
 
-struct InstanceInfo {
-  RID instance;
-  Transform base;
-  Vector3 rot_axis;
+class Scene {
+  Viewport* viewport_;
+  Environment* environment;
+  RID camera_, scenario_;
+
+public:
+  Scene() {
+  }
+
+  void initialize() {
+    VisualServer* vs = VisualServer::get_singleton();
+    camera_ = vs->camera_create();
+    scenario_ = vs->scenario_create();
+    viewport_ = memnew(Viewport);
+  }
+
+  void cleanup() {
+    memdelete(viewport_);
+  }
+
+  ~Scene() {
+  }
 };
 
+void SetupScene2(const GodotRenderer& renderer) {
+  SceneTree* tree = memnew(SceneTree);
+  tree->init();
+
+  Spatial* scene = memnew(Spatial);
+  tree->add_current_scene(scene); // need to do this here so all subsequent children knows about the tree, espcially the camera
+
+  Camera* camera = memnew(Camera);
+  camera->set_perspective(65.0, 0.1, 100.0);
+  scene->add_child(camera);
+  Transform Tc;
+  Tc.set_look_at(Vector3(20., 10., 0.), Vector3(), Vector3(0., 1., 0.));
+  camera->set_transform(Tc);
+  camera->notification(Spatial::NOTIFICATION_TRANSFORM_CHANGED); // SceneTree::_flush_transform_notifications() is private, so we have to do this :(
+
+  SpatialMaterial *material = memnew(SpatialMaterial);
+  material->set_albedo(Color(0.81, 0.58, 0.36, 1.0));
+  material->set_specular(0.9);
+  material->set_metallic(0.2);
+  material->set_roughness(0.0);
+  Ref<Texture> texture = ResourceLoader::load(path + "texture_wood.png");
+  material->set_texture(SpatialMaterial::TEXTURE_ALBEDO, texture);
+  // IMPORTANT: This calls to SpatialMaterial::_update_shader(). Without this materials wont' work
+  // Godot sets up so that this is called in SceneTree::call_idle_call_backs()
+  // Not sure if we need to do this as an idle callback...
+  SpatialMaterial::flush_changes();
+
+  String filename = path + "godot_ball.mesh";
+  // This calls all the way down to RasterizerStorageGLES3::mesh_add_surface(), which initializes VAO
+  // RasterizerStorageGLES3::mesh_add_surface <-- ArrayMesh::add_surface <-- ArrayMesh::_setv() <-- res->set() <-- ResourceInteractiveLoaderBinary::poll()
+  Ref<Mesh> mesh = ResourceLoader::load(filename);
+
+  MeshInstance *mesh_instance = memnew(MeshInstance);
+  scene->add_child(mesh_instance);
+  // call this or any function that calls _instance_queue_update
+  // before calling set_surface_material to update VS instance's materials
+  //vs->instance_set_scenario(mesh_instance->get_instance(), scenario);
+  // Without scenario, set_mesh->set_base->VS::instance_set_base DOES NOT call _instance_queue_update to update
+  // VS instance's materials, causing a mismatch between MeshInstance's and its corresponding VS instance's materials
+  mesh_instance->set_mesh(mesh);
+  // Without instance_queue_update, the following will not work as VS instance's materials has size 0!
+  mesh_instance->set_surface_material(0, material);
+  mesh_instance->set_surface_material(1, material);
+  mesh_instance->set_surface_material(2, material);
+  mesh_instance->set_surface_material(3, material);
+
+  OmniLight *light = memnew(OmniLight());
+  scene->add_child(light);
+  light->set_color(Color(1.0, 1.0, 1.0));
+  light->set_param(Light::PARAM_ENERGY, 5.0);
+  light->set_param(Light::PARAM_SPECULAR, 0.5);
+  light->set_param(Light::PARAM_RANGE, 50.0);
+  light->set_transform(Transform(Basis(), Vector3(12.5, 5., 0.)));
+  light->notification(Spatial::NOTIFICATION_TRANSFORM_CHANGED);
+}
+
 void SetupScene(const GodotRenderer& renderer) {
+  Viewport* viewport_ = memnew(Viewport);
   VisualServer *vs = VisualServer::get_singleton();
   RID scenario = vs->scenario_create();
 
@@ -31,7 +107,7 @@ void SetupScene(const GodotRenderer& renderer) {
   vs->camera_set_transform(camera, Tc);
   vs->camera_set_perspective(camera, 65, 0.1, 100);
 
-  RID viewport = renderer.get_viewport()->get_viewport_rid();
+  RID viewport = viewport_->get_viewport_rid();
   Size2i screen_size = OS::get_singleton()->get_window_size();
   vs->viewport_set_size(viewport, screen_size.x, screen_size.y);
   vs->viewport_attach_to_screen(viewport, Rect2(Vector2(), screen_size));
@@ -132,7 +208,7 @@ void SetupScene(const GodotRenderer& renderer) {
 int main(int argc, char *argv[]) {
   GodotRenderer renderer(640, 480);
   renderer.Initialize();
-  SetupScene(renderer); // This create the cubes and add them to the visual server
+  SetupScene2(renderer); // This create the cubes and add them to the visual server
 
   renderer.MainLoop();
 
