@@ -114,10 +114,6 @@ public:
     mesh_instance_ = memnew(MeshInstance);
     scene_root_->add_child(mesh_instance_); // Must add before doing any settings
     mesh_instance_->set_mesh(mesh);
-    mesh_instance_->set_surface_material(0, material);
-    mesh_instance_->set_surface_material(1, material);
-    mesh_instance_->set_surface_material(2, material);
-    mesh_instance_->set_surface_material(3, material);
     Basis R(Vector3(0.0, 1.0, 0.0), 90.0 * DEGREE);
     R = Basis(Vector3(0.0, 0.0, 1.0), -10.0 * DEGREE) * R;
     mesh_instance_->set_transform(Transform(Basis(), Vector3(0, 0.0, 0.)));
@@ -140,34 +136,18 @@ public:
 
   void ApplyDepthShader() {
     Ref<Mesh> mesh = mesh_instance_->get_mesh();
-    std::wcout << "BEFORE apply depth shader: " << std::endl;
-    std::wcout << "\tMesh: " << mesh->surface_get_material(0)->get_rid().get_id() << std::endl;
-    std::wcout << "\tMesh instance: " << mesh_instance_->get_surface_material(0)->get_rid().get_id() << std::endl;
-    mesh_instance_->set_surface_material(0, shader_material_);
-    mesh_instance_->set_surface_material(1, shader_material_);
-    mesh_instance_->set_surface_material(2, shader_material_);
-    mesh_instance_->set_surface_material(3, shader_material_);
+    for (int i = 0; i < mesh->get_surface_count(); ++i)
+      mesh_instance_->set_surface_material(i, shader_material_);
     SpatialMaterial::flush_changes();
     env->set_background(Environment::BG_CLEAR_COLOR);
-    std::wcout << "AFTER apply depth shader: " << std::endl;
-    std::wcout << "\tMesh: " << mesh->surface_get_material(0)->get_rid().get_id() << std::endl;
-    std::wcout << "\tMesh instance: " << mesh_instance_->get_surface_material(0)->get_rid().get_id() << std::endl;
   }
 
-  void ReleaseDepthShader() {
+  void ApplyMaterialShader() {
     Ref<Mesh> mesh = mesh_instance_->get_mesh();
-    std::wcout << "BEFORE release depth shader: " << std::endl;
-    std::wcout << "\tMesh: " << mesh->surface_get_material(0)->get_rid().get_id() << std::endl;
-    std::wcout << "\tMesh instance: " << mesh_instance_->get_surface_material(0)->get_rid().get_id() << std::endl;
-    mesh_instance_->set_surface_material(0, mesh->surface_get_material(0));
-    mesh_instance_->set_surface_material(1, mesh->surface_get_material(1));
-    mesh_instance_->set_surface_material(2, mesh->surface_get_material(2));
-    mesh_instance_->set_surface_material(3, mesh->surface_get_material(3));
+    for (int i = 0; i < mesh->get_surface_count(); ++i)
+      mesh_instance_->set_surface_material(i, mesh->surface_get_material(i));
     SpatialMaterial::flush_changes();
     env->set_background(Environment::BG_SKY);
-    std::wcout << "AFTER release depth shader: " << std::endl;
-    std::wcout << "\tMesh: " << mesh->surface_get_material(0)->get_rid().get_id() << std::endl;
-    std::wcout << "\tMesh instance: " << mesh_instance_->get_surface_material(0)->get_rid().get_id() << std::endl;
   }
 
   void Finish() {
@@ -198,7 +178,7 @@ int main(int argc, char *argv[]) {
   renderer.Draw();
   scene.Capture()->save_png("/home/duynguyen/Downloads/depth1.png");
 
-  scene.ReleaseDepthShader();
+  scene.ApplyMaterialShader();
   renderer.Draw();
   scene.Capture()->save_png("/home/duynguyen/Downloads/rgb2.png");
 
@@ -206,7 +186,7 @@ int main(int argc, char *argv[]) {
   renderer.Draw();
   scene.Capture()->save_png("/home/duynguyen/Downloads/depth2.png");
 
-  scene.ReleaseDepthShader();
+  scene.ApplyMaterialShader();
   renderer.Draw();
   scene.Capture()->save_png("/home/duynguyen/Downloads/rgb3.png");
 
