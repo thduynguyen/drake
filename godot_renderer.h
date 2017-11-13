@@ -44,14 +44,14 @@ public:
   }
 
   void Draw() {
+    glClear(GL_COLOR_BUFFER_BIT);
     VSG::scene->update_dirty_instances(); //update scene stuff
     VSG::viewport->draw_viewports();
-    //VSG::scene->render_probes();
+    VSG::scene->render_probes();
   }
 
   void MainLoop() {
     do {
-      glClear(GL_COLOR_BUFFER_BIT);
       Draw();
       //Ref<Image> image = viewport_->get_texture()->get_data();
       //image->save_png("/home/duynguyen/Downloads/texture.png");
@@ -69,7 +69,6 @@ public:
   }
 
   GLFWwindow *const get_glfw_window() const { return window_; }
-  //Viewport* const get_viewport() const { return viewport_; }
 
 private:
   // TODO: modify this for render_to_texture
@@ -150,21 +149,19 @@ private:
     physics_2d_server = Physics2DServerManager::new_default_server();
     /// 3D Physics Server
 		physics_server = PhysicsServerManager::new_default_server();
-    //viewport_ = memnew(Viewport);
   }
 
   void CleanupGodot() {
-    //if (viewport_)
-      //memdelete(viewport_);
-
     if (physics_2d_server)
       memdelete(physics_2d_server);
+
+    if (physics_server)
+      memdelete(physics_server);
 
     // Cleanup
     unregister_scene_types();
     unregister_server_types();
 
-    //memdelete(main_loop);
     visual_server->finish();
     memdelete(visual_server);
 
