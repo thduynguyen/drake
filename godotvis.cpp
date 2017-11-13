@@ -14,23 +14,34 @@
 String path = "/home/duynguyen/git/godot-demo-projects/3d/material_testers/";
 
 void SetupScene(const GodotRenderer& renderer) {
+  // Construct and initialize a SceneTree
+  // This creates a default Viewport as the root
+  // and a World attached to that Viewport
+  // The World creates and contains a VisualServer's scenario
+  // We need to attach an environment to the World and other
+  // visual instance (camera, meshes etc) to the tree.
   SceneTree* tree = memnew(SceneTree);
   tree->init();
 
+  // Load skybox resource
   String skyfilename = path + "night.hdr";
   Ref<Texture> sky_texture = ResourceLoader::load(skyfilename);
   PanoramaSky *sky = memnew(PanoramaSky);
   sky->set_panorama(sky_texture);
   sky->set_radiance_size(Sky::RADIANCE_SIZE_64);
+
+  // Set Environment
   Environment* env = memnew(Environment);
   env->set_background(Environment::BG_SKY);
   env->set_sky(sky);
   env->set_bg_energy(1.0);
   tree->get_root()->get_world()->set_environment(env);
 
+  // Dummy Spatial as the top root of the scene
   Spatial* scene = memnew(Spatial);
   tree->add_current_scene(scene); // need to do this here so all subsequent children knows about the tree, espcially the camera
 
+  // Add camera
   Camera* camera = memnew(Camera);
   scene->add_child(camera);
   camera->set_perspective(65.0, 0.1, 100.0);
@@ -38,6 +49,12 @@ void SetupScene(const GodotRenderer& renderer) {
   camera->set_transform(Tc);
   camera->notification(Spatial::NOTIFICATION_TRANSFORM_CHANGED); // SceneTree::_flush_transform_notifications() is private, so we have to do this :(
 
+  // Load a mesh
+  // This calls all the way down to RasterizerStorageGLES3::mesh_add_surface(), which initializes VAO
+  // RasterizerStorageGLES3::mesh_add_surface <-- ArrayMesh::add_surface <-- ArrayMesh::_setv() <-- res->set() <-- ResourceInteractiveLoaderBinary::poll()
+  String filename = path + "godot_ball.mesh";
+  Ref<Mesh> mesh = ResourceLoader::load(filename);
+  // Load its material
   SpatialMaterial *material = memnew(SpatialMaterial);
   material->set_albedo(Color(1.0, 1.0, 1.0, 1.0));
   Ref<Texture> texture = ResourceLoader::load(path + "aluminium_albedo.png");
@@ -56,11 +73,7 @@ void SetupScene(const GodotRenderer& renderer) {
   // Not sure if we need to do this as an idle callback...
   SpatialMaterial::flush_changes();
 
-  String filename = path + "godot_ball.mesh";
-  // This calls all the way down to RasterizerStorageGLES3::mesh_add_surface(), which initializes VAO
-  // RasterizerStorageGLES3::mesh_add_surface <-- ArrayMesh::add_surface <-- ArrayMesh::_setv() <-- res->set() <-- ResourceInteractiveLoaderBinary::poll()
-  Ref<Mesh> mesh = ResourceLoader::load(filename);
-
+  // Instantiate the mesh from its mesh and material resources
   MeshInstance *mesh_instance = memnew(MeshInstance);
   scene->add_child(mesh_instance); // Must add before doing any settings
   mesh_instance->set_mesh(mesh);
@@ -74,6 +87,7 @@ void SetupScene(const GodotRenderer& renderer) {
   mesh_instance->set_scale(Vector3(0.8, 0.8, 0.8));
   mesh_instance->notification(Spatial::NOTIFICATION_TRANSFORM_CHANGED);
 
+  // Add lights
   OmniLight *light = memnew(OmniLight());
   scene->add_child(light);
   light->set_color(Color(1.0, 1.0, 1.0));
@@ -81,7 +95,6 @@ void SetupScene(const GodotRenderer& renderer) {
   light->set_param(Light::PARAM_RANGE, 50.0);
   light->set_transform(Transform(Basis(), Vector3(1.0, 5., 10.)));
   light->notification(Spatial::NOTIFICATION_TRANSFORM_CHANGED);
-
 }
 
 
