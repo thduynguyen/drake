@@ -5,11 +5,12 @@
 #include <iostream>
 #include <vector>
 
-#include "godot_renderer.h"
-#include "godot_scene.h"
+#include "godotvis/godot_renderer.h"
+#include "godotvis/godot_scene.h"
+
+using namespace godotvis;
 
 std::string path = "/home/duynguyen/git/godot-demo-projects/3d/material_testers/";
-
 
 int main(int argc, char *argv[]) {
   GodotRenderer renderer(1280, 960);
@@ -19,7 +20,8 @@ int main(int argc, char *argv[]) {
   scene.Initialize();
   scene.SetupEnvironment(path + "night.hdr");
   scene.AddCamera(65.0, 0.1, 100.0);
-  using Vec3 = double[3];
+
+  using Vec3 = std::array<double, 3>;
   using Mat33 = double[3][3];
   scene.SetCameraPose(Mat33{{1., 0., 0.}, {0., 1., 0.}, {0., 0., 1.}}, Vec3{0., 2.5, 15.});
 
