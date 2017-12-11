@@ -44,9 +44,9 @@ public:
   virtual void initialize_core() {}
   virtual void finalize_core() {}
   virtual void alert(const String &p_alert, const String &p_t) {}
-  virtual String get_stdin_string(bool p_block = true) {}
+  virtual String get_stdin_string(bool p_block = true) { return String(); }
   virtual Error execute(const String &p_path, const List<String> &p_arguments, bool p_blocking, ProcessID *r_child_id = NULL, String *r_pipe = NULL, int *r_exitcode = NULL, bool read_stderr = false) { return OK; }
-  virtual Error kill(const ProcessID &p_pid) {}
+  virtual Error kill(const ProcessID &p_pid) { return OK; }
   virtual bool has_environment(const String &p_var) const { return false; }
   virtual String get_environment(const String &p_var) const { return String(); }
   virtual Date get_date(bool local = false) const { return Date(); }
