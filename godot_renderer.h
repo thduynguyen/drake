@@ -5,6 +5,7 @@
 
 #include "core/error_list.h"
 #include "core/register_core_types.h"
+#include "os/file_access.h"
 #include "drivers/gles3/rasterizer_gles3.h"
 #include "drivers/register_driver_types.h"
 #include "drivers/unix/dir_access_unix.h"
@@ -12,7 +13,6 @@
 #include "os/thread_dummy.h"
 #include "os_dummy.h"
 #include "project_settings.h"
-#include "quick_hull.h"
 #include "scene/main/scene_tree.h"
 #include "scene/register_scene_types.h"
 #include "servers/register_server_types.h"
@@ -94,6 +94,7 @@ private:
     }
     glfwMakeContextCurrent(window_); // Initialize GLEW
     glfwSetInputMode(window_, GLFW_STICKY_KEYS, GL_TRUE);
+    return OK;
   }
 
   void InitGodot() {
@@ -111,8 +112,8 @@ private:
     FileAccess::make_default<FileAccessUnix>(FileAccess::ACCESS_RESOURCES);
     FileAccess::make_default<FileAccessUnix>(FileAccess::ACCESS_USERDATA);
     FileAccess::make_default<FileAccessUnix>(FileAccess::ACCESS_FILESYSTEM);
-    //FileAccessBufferedFA<FileAccessUnix>::make_default();
-    //TODO: Change to DirAccessOSX for osx platfom
+    ////FileAccessBufferedFA<FileAccessUnix>::make_default();
+    ////TODO: Change to DirAccessOSX for osx platform!!!
     DirAccess::make_default<DirAccessUnix>(DirAccess::ACCESS_RESOURCES);
     DirAccess::make_default<DirAccessUnix>(DirAccess::ACCESS_USERDATA);
     DirAccess::make_default<DirAccessUnix>(DirAccess::ACCESS_FILESYSTEM);
