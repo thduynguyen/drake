@@ -24,19 +24,18 @@
 #include <GLFW/glfw3.h>
 
 class GodotRenderer {
-  int window_width, window_height;
-  //TODO: Use nullptr when C++11 is enabled
+  int window_width_, window_height_;
   OS_Dummy os_;
-  GLFWwindow *window_ = NULL;
-  VisualServer *visual_server = NULL;
-  ARVRServer *arvr_server = NULL;
-  ProjectSettings *globals = NULL;
-  Physics2DServer* physics_2d_server = NULL; //!< Unfortunately this is needed in Viewport's ctor
-  PhysicsServer* physics_server = NULL; //!< Unfortunately this is needed in Viewport's ctor
+  GLFWwindow *window_ = nullptr;
+  VisualServer *visual_server_ = nullptr;
+  ARVRServer *arvr_server_ = nullptr;
+  ProjectSettings *globals_ = nullptr;
+  Physics2DServer* physics_2d_server_ = nullptr; //!< Unfortunately this is needed in Viewport's ctor
+  PhysicsServer* physics_server_ = nullptr; //!< Unfortunately this is needed in Viewport's ctor
 
 public:
   GodotRenderer(int window_width, int window_height)
-    : window_width(window_width), window_height(window_height), os_(window_width, window_height) {}
+    : window_width_(window_width), window_height_(window_height), os_(window_width, window_height) {}
 
   void Initialize() {
     InitGLContext();
@@ -70,6 +69,9 @@ public:
 
   GLFWwindow *const get_glfw_window() const { return window_; }
 
+  int width() const { return window_width_; }
+  int height() const { return window_height_; }
+
 private:
   // TODO: modify this for render_to_texture
   Error InitGLContext() {
@@ -85,8 +87,8 @@ private:
     //glfwWindowHint(GLFW_VISIBLE, GL_FALSE);
 
     // Open a window_ and create its OpenGL context
-    window_ = glfwCreateWindow(window_width,
-        window_height, "", NULL, NULL);
+    window_ = glfwCreateWindow(window_width_,
+        window_height_, "", NULL, NULL);
     if (window_ == NULL) {
       fprintf(stderr, "Failed to open GLFW window_.\n");
       glfwTerminate();
@@ -125,8 +127,8 @@ private:
     register_core_driver_types();
 
     // Needed for GLOBAL_DEF in VisualServer and Rasterizer
-    globals = memnew(ProjectSettings);
-    register_core_settings(); //here globals is present
+    globals_ = memnew(ProjectSettings);
+    register_core_settings(); //here globals_ is present
 
     //////////////////////////////////////
     // Main setup2
@@ -135,8 +137,8 @@ private:
     RasterizerGLES3::register_config();
     RasterizerGLES3::make_current();
 
-    visual_server = memnew(VisualServerRaster);
-    visual_server->init();
+    visual_server_ = memnew(VisualServerRaster);
+    visual_server_->init();
 
     //=====================================
     register_server_types();
@@ -145,32 +147,32 @@ private:
 
     register_scene_types();
 
-    arvr_server = memnew(ARVRServer); // Needed for VisualServer::draw(), in VisualServerViewport::draw_viewports()
+    arvr_server_ = memnew(ARVRServer); // Needed for VisualServer::draw(), in VisualServerViewport::draw_viewports()
 
-    physics_2d_server = Physics2DServerManager::new_default_server();
+    physics_2d_server_ = Physics2DServerManager::new_default_server();
     /// 3D Physics Server
-		physics_server = PhysicsServerManager::new_default_server();
+		physics_server_ = PhysicsServerManager::new_default_server();
   }
 
   void CleanupGodot() {
-    if (physics_2d_server)
-      memdelete(physics_2d_server);
+    if (physics_2d_server_)
+      memdelete(physics_2d_server_);
 
-    if (physics_server)
-      memdelete(physics_server);
+    if (physics_server_)
+      memdelete(physics_server_);
 
     // Cleanup
     unregister_scene_types();
     unregister_server_types();
 
-    visual_server->finish();
-    memdelete(visual_server);
+    visual_server_->finish();
+    memdelete(visual_server_);
 
-    if (arvr_server)
-      memdelete(arvr_server);
+    if (arvr_server_)
+      memdelete(arvr_server_);
 
-    if (globals)
-      memdelete(globals);
+    if (globals_)
+      memdelete(globals_);
 
     unregister_core_driver_types();
     unregister_core_types();
