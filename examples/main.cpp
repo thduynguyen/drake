@@ -7,6 +7,7 @@
 
 #include "godotvis/godot_renderer.h"
 #include "godotvis/godot_scene.h"
+#include <array>
 
 using namespace godotvis;
 
@@ -25,8 +26,7 @@ int main(int argc, char *argv[]) {
   using Mat33 = double[3][3];
   scene.SetCameraPose(Mat33{{1., 0., 0.}, {0., 1., 0.}, {0., 0., 1.}}, Vec3{0., 2.5, 15.});
 
-  int id = 27;
-  scene.AddMeshInstance(id, path + "godot_ball.mesh");
+  int id = scene.AddMeshInstance(path + "godot_ball.mesh");
   double** R = new double*[3];
   for (int r = 0; r<3; ++r) {
     R[r] = new double[3];
@@ -36,6 +36,12 @@ int main(int argc, char *argv[]) {
   R[0][0] = R[1][1] = R[2][2] = 1.;
   scene.SetInstancePose(id, R, Vec3{0., 0., 0.});
   scene.SetInstanceScale(id, 0.8, 0.8, 0.8);
+
+  int cube_id = scene.AddCubeInstance(1., 1., 1.);
+  int sphere_id = scene.AddSphereInstance(1.);
+  int cylinder_id = scene.AddCylinderInstance(0.5, 1.0);
+  scene.SetInstancePose(sphere_id, R, Vec3{1.0, 0., 0.});
+  scene.SetInstancePose(cylinder_id, R, Vec3{-1.0, 0., 0.});
 
   renderer.Draw();
   // TODO: Why can't I use Ref<Image> variable?
