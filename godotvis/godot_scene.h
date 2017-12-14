@@ -1,9 +1,10 @@
 #include "scene/3d/light.h"
 #include "scene/3d/mesh_instance.h"
 #include "scene/3d/camera.h"
+#include "scene/resources/primitive_meshes.h"
 
 #include <string>
-#include <map>
+#include <vector>
 
 namespace godotvis {
 
@@ -15,7 +16,10 @@ class GodotScene {
   MeshInstance* mesh_instance_ = NULL;
   Ref<ShaderMaterial> shader_material_;
   SpatialMaterial* material = NULL;
-  std::map<int, int> id_to_child_index_; //!< Map from object id provided by the user to Godot scene root's child index
+  CubeMesh* cube_ = nullptr;
+  SphereMesh* sphere_ = nullptr;
+  CylinderMesh* cylinder_ = nullptr;
+  std::vector<int> mesh_instance_ids_;
 
 public:
   GodotScene() {}
@@ -34,7 +38,10 @@ public:
   void ApplyDepthShader();
   void ApplyMaterialShader();
   void Finish();
-  void AddMeshInstance(int id, const std::string& filename);
+  int AddMeshInstance(const std::string& filename);
+  int AddCubeInstance(double x_length, double y_length, double z_length);
+  int AddSphereInstance(double radius);
+  int AddCylinderInstance(double radius, double height);
 
   template<class MAT3, class VEC3>
   void SetInstancePose(int id, const MAT3& r, const VEC3& t);
@@ -48,6 +55,7 @@ private:
   void InitDepthShader();
   Spatial* get_spatial_instance(int id);
   Ref<Mesh> LoadMesh(const std::string& filename);
+  int AddInstance(const Ref<Mesh>& mesh);
 };
 
 } // namespace godotvis

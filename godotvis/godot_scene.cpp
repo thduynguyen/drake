@@ -1,4 +1,5 @@
 #include "godot_scene.h"
+#include <stdexcept>
 
 namespace godotvis {
 
@@ -62,9 +63,9 @@ Ref<Image> GodotScene::Capture() {
 }
 
 void GodotScene::ApplyDepthShader() {
-  for (auto &kv : id_to_child_index_) {
+  for (int id : mesh_instance_ids_) {
     MeshInstance *instance =
-        Object::cast_to<MeshInstance>(scene_root_->get_child(kv.second));
+        Object::cast_to<MeshInstance>(scene_root_->get_child(id));
     Ref<Mesh> mesh = instance->get_mesh();
     for (int i = 0; i < mesh->get_surface_count(); ++i)
       instance->set_surface_material(i, shader_material_);
@@ -74,9 +75,9 @@ void GodotScene::ApplyDepthShader() {
 }
 
 void GodotScene::ApplyMaterialShader() {
-  for (auto &kv : id_to_child_index_) {
+  for (int id : mesh_instance_ids_) {
     MeshInstance *instance =
-        Object::cast_to<MeshInstance>(scene_root_->get_child(kv.second));
+        Object::cast_to<MeshInstance>(scene_root_->get_child(id));
     Ref<Mesh> mesh = instance->get_mesh();
     for (int i = 0; i < mesh->get_surface_count(); ++i)
       instance->set_surface_material(i, mesh->surface_get_material(i));
@@ -95,14 +96,52 @@ void GodotScene::Finish() {
   }
 }
 
-void GodotScene::AddMeshInstance(int id, const std::string &filename) {
-  Ref<Mesh> mesh = LoadMesh(filename);
+int GodotScene::AddInstance(const Ref<Mesh>& mesh) {
   MeshInstance *instance = memnew(MeshInstance);
   scene_root_->add_child(instance); // Must add before doing any settings
   instance->set_mesh(mesh);
-  id_to_child_index_[id] = instance->get_position_in_parent();
+  int id = instance->get_position_in_parent();
+  mesh_instance_ids_.push_back(id);
+  return id;
 }
 
+int GodotScene::AddMeshInstance(const std::string &filename) {
+  Ref<Mesh> mesh = LoadMesh(filename);
+  return AddInstance(mesh);
+}
+
+int GodotScene::AddCubeInstance(double x_length, double y_length, double z_length) {
+  if (!cube_) {
+    cube_ = memnew(CubeMesh);
+    cube_->set_size(Vector3(1.0, 1.0, 1.0));
+  }
+  int id = AddInstance(cube_);
+  SetInstanceScale(id, x_length, y_length, z_length);
+  return id;
+}
+
+int GodotScene::AddSphereInstance(double radius) {
+  if (!sphere_) {
+    sphere_ = memnew(SphereMesh);
+    sphere_->set_radius(0.5);
+    sphere_->set_height(1.0);
+  }
+  int id = AddInstance(sphere_);
+  SetInstanceScale(id, radius*2.0, radius*2.0, radius*2.0);
+  return id;
+}
+
+int GodotScene::AddCylinderInstance(double radius, double height) {
+  if (!cylinder_) {
+    cylinder_ = memnew(CylinderMesh);
+    cylinder_->set_top_radius(0.5);
+    cylinder_->set_bottom_radius(0.5);
+    cylinder_->set_height(1.0);
+  }
+  int id = AddInstance(cylinder_);
+  SetInstanceScale(id, radius*2.0, radius*2.0, height);
+  return id;
+}
 
 void GodotScene::SetInstanceScale(int id, double sx, double sy, double sz) {
   Spatial *instance = get_spatial_instance(id);
@@ -131,8 +170,7 @@ void GodotScene::InitDepthShader() {
 }
 
 Spatial *GodotScene::get_spatial_instance(int id) {
-  int child_index = id_to_child_index_[id];
-  Node *instance = scene_root_->get_child(child_index);
+  Node *instance = scene_root_->get_child(id);
   return Object::cast_to<Spatial>(instance);
 }
 
