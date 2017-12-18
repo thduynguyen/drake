@@ -1,4 +1,5 @@
-#include "godot_scene.h"
+#include "drake/systems/sensors/godot_renderer/godot_scene.h"
+
 #include <stdexcept>
 
 namespace godotvis {
@@ -214,6 +215,28 @@ Ref<Mesh> GodotScene::LoadMesh(const std::string &filename) {
   return mesh;
 }
 
+Transform ConvertToGodotTransform(const Eigen::Isometry3d& transform) {
+  const auto& R = transform.rotation();
+  const auto& t = transform.translation();
+  return Transform(Basis(R(0, 0), R(0, 1), R(0, 2), R(1, 0), R(1, 1), R(1, 2),
+                         R(2, 0), R(2, 1), R(2, 2)),
+                   Vector3(t(0), t(1), t(2)));
+}
+
+void GodotScene::SetInstancePose(Spatial* instance,
+                                 const Eigen::Isometry3d& X_WI) {
+  instance->set_transform(ConvertToGodotTransform(X_WI));
+  instance->notification(Spatial::NOTIFICATION_TRANSFORM_CHANGED);
+}
+
+void GodotScene::SetInstancePose(int id, const Eigen::Isometry3d& X_WI) {
+  Spatial *instance = get_spatial_instance(id);
+  SetInstancePose(instance, X_WI);
+}
+
+void GodotScene::SetCameraPose(const Eigen::Isometry3d& X_WI) {
+  SetInstancePose(camera_, X_WI);
+}
 
 } // namespace godotvis
 

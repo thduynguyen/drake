@@ -1,10 +1,14 @@
+#pragma once
+
+#include <string>
+#include <vector>
+
+#include <Eigen/Dense>
+
 #include "scene/3d/light.h"
 #include "scene/3d/mesh_instance.h"
 #include "scene/3d/camera.h"
 #include "scene/resources/primitive_meshes.h"
-
-#include <string>
-#include <vector>
 
 namespace godotvis {
 
@@ -31,8 +35,7 @@ public:
   /// TODO: handle distortion
   void AddCamera(double fov_y, double z_near, double z_far);
 
-  template<class MAT3, class VEC3>
-  void SetCameraPose(const MAT3& r, const VEC3& t);
+  void SetCameraPose(const Eigen::Isometry3d& X_WI);
 
   Ref<Image> Capture();
   void ApplyDepthShader();
@@ -43,11 +46,9 @@ public:
   int AddSphereInstance(double radius);
   int AddCylinderInstance(double radius, double height);
 
-  template<class MAT3, class VEC3>
-  void SetInstancePose(int id, const MAT3& r, const VEC3& t);
+  void SetInstancePose(int id, const Eigen::Isometry3d& X_WI);
 
-  template <class MAT3, class VEC3>
-  void SetInstancePose(Spatial* instance, const MAT3& r, const VEC3& t);
+  void SetInstancePose(Spatial* instance, const Eigen::Isometry3d& X_WI);
 
   void SetInstanceScale(int id, double sx, double sy, double sz);
 
@@ -58,6 +59,8 @@ private:
   int AddInstance(const Ref<Mesh>& mesh);
 };
 
+/// Utility functon to convert Eigen's transform to Godot's transform
+Transform ConvertToGodotTransform(const Eigen::Isometry3d& transform);
+
 } // namespace godotvis
 
-#include "godot_scene.inl"

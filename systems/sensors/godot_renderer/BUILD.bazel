@@ -1,0 +1,30 @@
+load(
+    "//tools:drake.bzl",
+    "drake_cc_binary",
+    "drake_cc_googletest",
+    "drake_cc_library",
+)
+
+load("//tools/lint:lint.bzl", "add_lint_tests")
+
+drake_cc_library(
+    name = "godot_renderer",
+    hdrs = glob(["*.h", "*.inl"]),
+    srcs = glob(["*.cpp"]),
+    linkopts = ["-lglfw", "-ldl", "-lpng", "-lz"],
+    deps = ["@godot//:godot",
+        "@eigen",
+    ],
+    copts = [],
+    visibility=["//visibility:public"],
+)
+
+drake_cc_googletest(
+    name = "godot_renderer_test",
+    local = 1,
+    deps = [
+        ":godot_renderer",
+    ],
+)
+
+add_lint_tests()
