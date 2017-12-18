@@ -416,7 +416,7 @@ new_http_archive(
     url = "https://github.awsinternal.tri.global/duynguyen-ta/godot/archive/renderer_only.zip",
     #sha256 =
     strip_prefix = "godot-renderer_only",
-    build_file = "//tools/workspace/godot/godot.BUILD",
+    build_file = "tools/workspace/godot/godot.BUILD",
 )
 
 load("//tools/workspace/expat:expat.bzl", "expat_repository")
