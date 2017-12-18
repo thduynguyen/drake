@@ -23,12 +23,11 @@ int main(int argc, char *argv[]) {
   scene.AddCamera(65.0, 0.1, 100.0);
 
   Eigen::Isometry3d camera_pose{Eigen::Isometry3d::Identity()};
+  camera_pose.translation() = Eigen::Vector3d(0., 2.5, 15.);
   scene.SetCameraPose(camera_pose);
 
   //int id = scene.AddMeshInstance(path + "godot_ball.mesh");
   Eigen::Isometry3d pose{Eigen::Isometry3d::Identity()};
-  pose = pose.translate(Eigen::Vector3d(0., 2.5, 15.));
-  std::cout << "Pose: " << pose.matrix() << std::endl;
   //scene.SetInstancePose(id, pose);
   //scene.SetInstanceScale(id, 0.8, 0.8, 0.8);
 
@@ -43,8 +42,10 @@ int main(int argc, char *argv[]) {
   int cube_id = scene.AddCubeInstance(1., 1., 1.);
   int sphere_id = scene.AddSphereInstance(1.);
   int cylinder_id = scene.AddCylinderInstance(0.5, 1.0);
-  scene.SetInstancePose(sphere_id, Eigen::Isometry3d::Identity());
-  scene.SetInstancePose(cylinder_id, Eigen::Isometry3d::Identity());
+  pose.translation() = Eigen::Vector3d(1.0, 0., 0.);
+  scene.SetInstancePose(sphere_id, pose);
+  pose.translation() = Eigen::Vector3d(-1.0, 0., 0.);
+  scene.SetInstancePose(cylinder_id, pose);
 
   renderer.Draw();
   // TODO: Why can't I use Ref<Image> variable?
