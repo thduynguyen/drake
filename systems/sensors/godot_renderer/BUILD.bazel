@@ -10,7 +10,7 @@ load("//tools/lint:lint.bzl", "add_lint_tests")
 drake_cc_library(
     name = "godot_renderer",
     hdrs = glob(["*.h", "*.inl"]),
-    srcs = glob(["*.cpp"]),
+    srcs = glob(["*.cc"]),
     linkopts = ["-lglfw", "-ldl", "-lpng", "-lz"],
     deps = ["@godot//:godot",
         "@eigen",

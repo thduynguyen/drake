@@ -1,4 +1,4 @@
-#include "os_dummy.h"
+#include "drake/systems/sensors/godot_renderer/os_dummy.h"
 
 RWLock *RWLockDummy::create() {
   return memnew(RWLockDummy);

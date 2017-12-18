@@ -240,4 +240,3 @@ void GodotScene::SetCameraPose(const Eigen::Isometry3d& X_WI) {
 
 } // namespace godotvis
 
-#include "godot_scene.inl"

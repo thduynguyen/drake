@@ -1,4 +1,4 @@
-#include "godot_renderer.h"
+#include "drake/systems/sensors/godot_renderer/godot_renderer.h"
 
 namespace godotvis {
 
