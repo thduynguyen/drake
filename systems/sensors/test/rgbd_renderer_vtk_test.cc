@@ -27,7 +27,7 @@ TEST_F(RgbdRendererVTKTest, NoBodyTest) {
   // Verifies depth.
   for (int y = 0; y < kHeight; ++y) {
     for (int x = 0; x < kWidth; ++x) {
-      EXPECT_TRUE(std::isnan(depth_.at(x, y)[0]));
+      ASSERT_TRUE(std::isnan(depth_.at(x, y)[0]));
     }
   }
 }
