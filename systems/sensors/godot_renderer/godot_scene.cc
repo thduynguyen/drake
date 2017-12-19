@@ -1,5 +1,5 @@
 #include "drake/systems/sensors/godot_renderer/godot_scene.h"
-
+#include "servers/visual/visual_server_global.h"
 #include <stdexcept>
 
 namespace godotvis {
@@ -25,18 +25,18 @@ void GodotScene::Initialize() {
 
 void GodotScene::SetupEnvironment(const std::string &env_filename) {
   // Load skybox resource
-  String skyfilename{env_filename.c_str()};
-  Ref<Texture> sky_texture = ResourceLoader::load(skyfilename);
+  //String skyfilename{env_filename.c_str()};
+  //Ref<Texture> sky_texture = ResourceLoader::load(skyfilename);
   // TODO: This will be freed by Environment. Also, what's the correct way to
   // create a Ref<Sky>?
-  PanoramaSky *sky = memnew(PanoramaSky);
-  sky->set_panorama(sky_texture);
-  sky->set_radiance_size(Sky::RADIANCE_SIZE_64);
+  //PanoramaSky *sky = memnew(PanoramaSky);
+  //sky->set_panorama(sky_texture);
+  //sky->set_radiance_size(Sky::RADIANCE_SIZE_64);
 
   //// Set Environment
   env = memnew(Environment);
-  env->set_background(Environment::BG_SKY);
-  env->set_sky(sky);
+  env->set_background(Environment::BG_COLOR);
+  //env->set_sky(sky);
   env->set_bg_energy(1.0);
   tree_->get_root()->get_world()->set_environment(env);
   // Add lights
@@ -47,6 +47,10 @@ void GodotScene::SetupEnvironment(const std::string &env_filename) {
   light->set_param(Light::PARAM_RANGE, 50.0);
   light->set_transform(Transform(Basis(), Vector3(1.0, 5., 10.)));
   light->notification(Spatial::NOTIFICATION_TRANSFORM_CHANGED);
+}
+
+void GodotScene::SetBackgroundColor(float r, float g, float b) {
+  env->set_bg_color(Color{r, g, b, 1.0f});
 }
 
 /// Add a camera to the scene. Only support one camera for now.
@@ -84,10 +88,11 @@ void GodotScene::ApplyMaterialShader() {
       instance->set_surface_material(i, mesh->surface_get_material(i));
   }
   SpatialMaterial::flush_changes();
-  env->set_background(Environment::BG_SKY);
+  env->set_background(Environment::BG_COLOR);
 }
 
 void GodotScene::Finish() {
+  VSG::storage->update_dirty_resources();
   shader_material_.unref();
   if (tree_) {
     // This will free all the resources/instances that have been new-ed
@@ -213,6 +218,19 @@ Ref<Mesh> GodotScene::LoadMesh(const std::string &filename) {
   mesh->surface_set_material(3, material);
 
   return mesh;
+}
+
+void GodotScene::set_viewport_size(int width, int height) {
+  tree_->get_root()->set_size(Size2(width, height));
+}
+
+std::pair<int,int> GodotScene::get_viewport_size() const {
+  Size2 size = tree_->get_root()->get_size();
+  return std::make_pair(static_cast<int>(size[0]), static_cast<int>(size[1]));
+}
+
+double GodotScene::get_camera_fov_y() const {
+  return camera_->get_fov();
 }
 
 Transform ConvertToGodotTransform(const Eigen::Isometry3d& transform) {

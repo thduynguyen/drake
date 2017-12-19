@@ -14,8 +14,7 @@ using namespace godotvis;
 std::string path = "/home/duynguyen/git/godot-demo-projects/3d/material_testers/";
 
 int main(int argc, char *argv[]) {
-  GodotRenderer renderer(1280, 960);
-  renderer.Initialize();
+  GodotRenderer renderer(640, 480);
 
   GodotScene scene;
   scene.Initialize();
@@ -26,10 +25,10 @@ int main(int argc, char *argv[]) {
   camera_pose.translation() = Eigen::Vector3d(0., 2.5, 15.);
   scene.SetCameraPose(camera_pose);
 
-  //int id = scene.AddMeshInstance(path + "godot_ball.mesh");
+  int id = scene.AddMeshInstance(path + "godot_ball.mesh");
   Eigen::Isometry3d pose{Eigen::Isometry3d::Identity()};
   //scene.SetInstancePose(id, pose);
-  //scene.SetInstanceScale(id, 0.8, 0.8, 0.8);
+  scene.SetInstanceScale(id, 0.8, 0.8, 0.8);
 
   Transform godot_T = ConvertToGodotTransform(pose);
   Transform expected_T{Basis{1., 0., 0., 0., 1., 0., 0., 0., 1.},
@@ -47,22 +46,33 @@ int main(int argc, char *argv[]) {
   pose.translation() = Eigen::Vector3d(-1.0, 0., 0.);
   scene.SetInstancePose(cylinder_id, pose);
 
+  scene.set_viewport_size(640, 480);
   renderer.Draw();
   // TODO: Why can't I use Ref<Image> variable?
-  scene.Capture()->save_png("/home/duynguyen/Downloads/rgb1.png");
+  Ref<Image> image = scene.Capture();
+  std::cout << "Image format: " << image->get_format() << std::endl;
+  std::cout << "Expected format: " << Image::FORMAT_RGBA8 << std::endl;
+  image->save_png("/home/duynguyen/Downloads/rgb1.png");
 
   scene.ApplyDepthShader();
   renderer.Draw();
-  scene.Capture()->save_png("/home/duynguyen/Downloads/depth1.png");
+  image = scene.Capture();
+  std::cout << "Depth Image format: " << image->get_format() << std::endl;
+  std::cout << "Depth Expected format: " << Image::FORMAT_RGBA8 << std::endl;
+  image->save_png("/home/duynguyen/Downloads/depth1.png");
 
+  scene.set_viewport_size(160, 120);
   scene.ApplyMaterialShader();
   renderer.Draw();
-  scene.Capture()->save_png("/home/duynguyen/Downloads/rgb2.png");
+  image = scene.Capture();
+  image->save_png("/home/duynguyen/Downloads/rgb2.png");
 
   scene.ApplyDepthShader();
   renderer.Draw();
-  scene.Capture()->save_png("/home/duynguyen/Downloads/depth2.png");
+  image = scene.Capture();
+  image->save_png("/home/duynguyen/Downloads/depth2.png");
 
+  scene.set_viewport_size(320, 240);
   scene.ApplyMaterialShader();
   renderer.Draw();
   scene.Capture()->save_png("/home/duynguyen/Downloads/rgb3.png");
@@ -72,7 +82,7 @@ int main(int argc, char *argv[]) {
   scene.Capture()->save_png("/home/duynguyen/Downloads/depth3.png");
 
   scene.Finish();
-  renderer.Cleanup();
+  image.unref();
 
   return 0; //os_.get_exit_code();
 }

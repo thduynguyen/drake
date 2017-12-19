@@ -27,9 +27,9 @@ void GodotRenderer::MainLoop() {
            glfwWindowShouldClose(window_) == 0);
 }
 
-void GodotRenderer::Cleanup() {
-  CleanupGodot();
-  CleanupGL();
+void GodotRenderer::CleanUp() {
+  CleanUpGodot();
+  CleanUpGL();
 }
 
 // TODO: modify this for render_to_texture
@@ -103,7 +103,7 @@ void GodotRenderer::InitGodot() {
   //=====================================
   register_server_types();
   Color clear = GLOBAL_DEF("rendering/environment/default_clear_color",
-                           Color(0.3, 0.3, 0.3));
+                           Color(0.5, 1.5, 1.5));
   VisualServer::get_singleton()->set_default_clear_color(clear);
 
   register_scene_types();
@@ -116,14 +116,14 @@ void GodotRenderer::InitGodot() {
   physics_server_ = PhysicsServerManager::new_default_server();
 }
 
-void GodotRenderer::CleanupGodot() {
+void GodotRenderer::CleanUpGodot() {
   if (physics_2d_server_)
     memdelete(physics_2d_server_);
 
   if (physics_server_)
     memdelete(physics_server_);
 
-  // Cleanup
+  // CleanUp
   unregister_scene_types();
   unregister_server_types();
 
@@ -140,6 +140,6 @@ void GodotRenderer::CleanupGodot() {
   unregister_core_types();
 }
 
-void GodotRenderer::CleanupGL() { glfwTerminate(); }
+void GodotRenderer::CleanUpGL() { glfwTerminate(); }
 
 } // namespace godotvis

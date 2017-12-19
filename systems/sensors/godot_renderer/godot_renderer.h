@@ -5,11 +5,11 @@
 
 #include "core/error_list.h"
 #include "core/register_core_types.h"
-#include "os/file_access.h"
 #include "drivers/gles3/rasterizer_gles3.h"
 #include "drivers/register_driver_types.h"
 #include "drivers/unix/dir_access_unix.h"
 #include "drivers/unix/file_access_unix.h"
+#include "os/file_access.h"
 #include "os/thread_dummy.h"
 #include "os_dummy.h"
 #include "project_settings.h"
@@ -26,34 +26,44 @@
 namespace godotvis {
 
 class GodotRenderer {
-  int window_width_, window_height_;
-  OS_Dummy os_;
-  GLFWwindow *window_ = nullptr;
-  VisualServer *visual_server_ = nullptr;
-  ARVRServer *arvr_server_ = nullptr;
-  ProjectSettings *globals_ = nullptr;
-  Physics2DServer* physics_2d_server_ = nullptr; //!< Unfortunately this is needed in Viewport's ctor
-  PhysicsServer* physics_server_ = nullptr; //!< Unfortunately this is needed in Viewport's ctor
-
-public:
+ public:
   GodotRenderer(int window_width, int window_height)
-    : window_width_(window_width), window_height_(window_height), os_(window_width, window_height) {}
+      : window_width_(window_width),
+        window_height_(window_height),
+        os_(window_width, window_height) {
+          Initialize();
+        }
+
+  ~GodotRenderer() {
+    CleanUp();
+  }
 
   void Initialize();
   void Draw();
   void MainLoop();
-  void Cleanup();
+  void CleanUp();
 
-  GLFWwindow *const get_glfw_window() const { return window_; }
+  GLFWwindow* const get_glfw_window() const { return window_; }
   int width() const { return window_width_; }
   int height() const { return window_height_; }
 
-private:
+ private:
   // TODO: modify this for render_to_texture
   Error InitGLContext();
   void InitGodot();
-  void CleanupGodot();
-  void CleanupGL();
+  void CleanUpGodot();
+  void CleanUpGL();
+
+  int window_width_, window_height_;
+  OS_Dummy os_;
+  GLFWwindow* window_ = nullptr;
+  VisualServer* visual_server_ = nullptr;
+  ARVRServer* arvr_server_ = nullptr;
+  ProjectSettings* globals_ = nullptr;
+  Physics2DServer* physics_2d_server_ =
+      nullptr;  //!< Unfortunately this is needed in Viewport's ctor
+  PhysicsServer* physics_server_ =
+      nullptr;  //!< Unfortunately this is needed in Viewport's ctor
 };
 
-} // namespace godotvis
+}  // namespace godotvis

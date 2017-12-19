@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <utility>
 
 #include <Eigen/Dense>
 
@@ -30,12 +31,22 @@ public:
 
   void Initialize();
   void SetupEnvironment(const std::string& env_filename);
+  void SetBackgroundColor(float r, float g, float b);
 
   /// Add a camera to the scene. Only support one camera for now.
   /// TODO: handle distortion
   void AddCamera(double fov_y, double z_near, double z_far);
 
   void SetCameraPose(const Eigen::Isometry3d& X_WI);
+
+  /// Set the size for the viewport, which also determines the camera
+  /// image size. This can be set multiple times, however, the first
+  /// set of values are the max size (for some unknown reason)
+  /// Note that this is independent of the renderer's window size.
+  void set_viewport_size(int width, int height);
+
+  std::pair<int, int> get_viewport_size() const;
+  double get_camera_fov_y() const;
 
   Ref<Image> Capture();
   void ApplyDepthShader();
