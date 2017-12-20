@@ -473,6 +473,30 @@ drake_cc_googletest(
     ],
 )
 
+drake_cc_googletest(
+    name = "rgbd_renderer_godot_test",
+    data = [
+        ":test_models",
+    ],
+    # Mitigates driver-related issues when running under `bazel test`. For more
+    # information, see #7004.
+    local = 1,
+    # Disable under LeakSanitizer and Valgrind Memcheck due to driver-related
+    # leaks. For more information, see #7520.
+    tags = [
+        "no_lsan",
+        "no_memcheck",
+    ],
+    deps = [
+        ":rgbd_renderer",
+        ":rgbd_renderer_test_util",
+        "//drake/systems/sensors/godot_renderer:godot_renderer",
+        "//drake/common:find_resource",
+        "//drake/common/test_utilities:eigen_matrix_compare",
+        "//drake/math:geometric_transform",
+    ],
+)
+
 sh_test(
     name = "rgbd_camera_publish_lcm_test",
     srcs = ["rgbd_camera_publish_lcm_example"],

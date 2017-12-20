@@ -8,6 +8,7 @@
 #include "drake/common/find_resource.h"
 #include "drake/common/test_utilities/eigen_matrix_compare.h"
 #include "drake/systems/sensors/image.h"
+#include "drake/systems/sensors/rgbd_renderer.h"
 
 namespace drake {
 namespace systems {
@@ -63,6 +64,10 @@ class RgbdRendererTest : public ::testing::Test {
     renderer_->RenderColorImage(&color_);
     renderer_->RenderDepthImage(&depth_);
     renderer_->RenderLabelImage(&label_);
+  }
+
+  void RenderColorImage() {
+    renderer_->RenderColorImage(&color_);
   }
 
   void VerifyUniformColor(const sensors::ColorI& pixel, int alpha) {
