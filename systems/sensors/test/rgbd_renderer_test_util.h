@@ -52,9 +52,8 @@ class RgbdRendererTest : public ::testing::Test {
     renderer_->RenderLabelImage(&label_);
   }
 
-  void RenderNoLabel() {
+  void RenderColorImage() {
     renderer_->RenderColorImage(&color_);
-    renderer_->RenderDepthImage(&depth_);
   }
 
   void VerifyUniformColor(const sensors::ColorI& pixel, int alpha) {

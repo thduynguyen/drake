@@ -250,25 +250,14 @@ TEST_F(RgbdRendererGodotTest, InstantiationTest) {
   EXPECT_EQ(renderer_->config().width, kWidth);
   EXPECT_EQ(renderer_->config().height, kHeight);
   EXPECT_EQ(renderer_->config().fov_y, kFovY);
-
-  //auto size = scene_.get_viewport_size();
-  //EXPECT_EQ(size.first, kWidth);
-  //EXPECT_EQ(size.second, kHeight);
-  //EXPECT_EQ(scene_.get_camera_fov_y(), kFovY);
+  // TODO(duy): Actually check these params inside Impl::scene_'s viewport
 }
 
 TEST_F(RgbdRendererGodotTest, NoBodyTest) {
   Init(Isometry3d::Identity());
-  RenderNoLabel();
+  RenderColorImage();
 
   VerifyUniformColor(renderer_->get_sky_color(), 0u);
-  //VerifyUniformLabel(Label::kNoBody);
-  ////Verifies depth.
-  //for (int y = 0; y < kHeight; ++y) {
-    //for (int x = 0; x < kWidth; ++x) {
-      //ASSERT_TRUE(std::isnan(depth_.at(x, y)[0]));
-    //}
-  //}
 }
 
 //godotvis::GodotRenderer renderer(1280, 960);
