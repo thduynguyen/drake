@@ -257,7 +257,7 @@ TEST_F(RgbdRendererGodotTest, NoBodyTest) {
   Init(Isometry3d::Identity());
   RenderColorImage();
 
-  VerifyUniformColor(renderer_->get_sky_color(), 0u);
+  VerifyUniformColor(renderer_->color_palette().get_sky_color(), 0u);
 }
 
 //godotvis::GodotRenderer renderer(1280, 960);
