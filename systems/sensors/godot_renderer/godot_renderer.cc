@@ -103,7 +103,7 @@ void GodotRenderer::InitGodot() {
   //=====================================
   register_server_types();
   Color clear = GLOBAL_DEF("rendering/environment/default_clear_color",
-                           Color(0.5, 1.5, 1.5));
+                           Color(0.5, 0.5, 0.5));
   VisualServer::get_singleton()->set_default_clear_color(clear);
 
   register_scene_types();
