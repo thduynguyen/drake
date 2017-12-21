@@ -8,26 +8,11 @@
 #include "drake/common/find_resource.h"
 #include "drake/common/test_utilities/eigen_matrix_compare.h"
 #include "drake/systems/sensors/image.h"
-#include "drake/systems/sensors/rgbd_renderer.h"
 
 namespace drake {
 namespace systems {
 namespace sensors {
 namespace test {
-
-using Eigen::Isometry3d;
-
-const int kWidth = 640;
-const int kHeight = 480;
-const double kZNear = 0.5;
-const double kZFar = 5.;
-const double kFovY = M_PI_4;
-const bool kShowWindow = true;
-
-// The following tolerance is used due to a precision difference between Ubuntu
-// Linux and Mac OSX.
-const double kColorPixelTolerance = 1.001;
-const double kDepthTolerance = 1e-4;
 
 // Holds `(x, y)` indices of the screen coordinate system where the ranges of
 // `x` and `y` are [0, kWidth) and [0, kHeight) respectively.
@@ -145,7 +130,7 @@ class RgbdRendererTest : public ::testing::Test {
   ImageLabel16I label_;
   Eigen::Isometry3d X_WC_;
 
-  std::unique_ptr<RgbdRenderer> renderer_;
+  std::unique_ptr<Renderer> renderer_;
 };
 
 }  // namespace test

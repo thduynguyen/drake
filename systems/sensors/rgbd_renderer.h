@@ -148,16 +148,6 @@ class RgbdRenderer {
   /// Returns the color palette of this renderer.
   const ColorPalette& color_palette() const;
 
- protected:
-  /// The common configuration nedded by all implementations of this interface.
-  RenderingConfig config_;
-
-  /// The color palette for sky, terrain colors and ground truth label rendering
-  /// TODO(thduynguyen, SeanCurtis-TRI): This is a world's property (colors for
-  /// each object/segment) hence should be moved to GeometryWorld. That would
-  /// also answer the question whether this heavy object should be a singleton.
-  ColorPalette color_palette_;
-
  private:
   virtual void ImplAddFlatTerrain() = 0;
 
