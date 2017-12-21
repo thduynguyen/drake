@@ -24,6 +24,7 @@ class GodotScene {
   CubeMesh* cube_ = nullptr;
   SphereMesh* sphere_ = nullptr;
   CylinderMesh* cylinder_ = nullptr;
+  PlaneMesh* plane_ = nullptr;
   std::vector<int> mesh_instance_ids_;
 
 public:
@@ -56,12 +57,14 @@ public:
   int AddCubeInstance(double x_length, double y_length, double z_length);
   int AddSphereInstance(double radius);
   int AddCylinderInstance(double radius, double height);
+  int AddPlaneInstance(double x_size, double y_size);
 
   void SetInstancePose(int id, const Eigen::Isometry3d& X_WI);
 
   void SetInstancePose(Spatial* instance, const Eigen::Isometry3d& X_WI);
 
   void SetInstanceScale(int id, double sx, double sy, double sz);
+  void FlushTransformNotifications();
 
 private:
   void InitDepthShader();

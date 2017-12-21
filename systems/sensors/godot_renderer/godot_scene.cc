@@ -46,7 +46,6 @@ void GodotScene::SetupEnvironment(const std::string &env_filename) {
   light->set_param(Light::PARAM_ENERGY, 2.0);
   light->set_param(Light::PARAM_RANGE, 50.0);
   light->set_transform(Transform(Basis(), Vector3(1.0, 5., 10.)));
-  light->notification(Spatial::NOTIFICATION_TRANSFORM_CHANGED);
 }
 
 void GodotScene::SetBackgroundColor(float r, float g, float b) {
@@ -106,6 +105,8 @@ int GodotScene::AddInstance(const Ref<Mesh>& mesh) {
   MeshInstance *instance = memnew(MeshInstance);
   scene_root_->add_child(instance); // Must add before doing any settings
   instance->set_mesh(mesh);
+  instance->set_notify_local_transform(true);
+  instance->set_notify_transform(true);
   int id = instance->get_position_in_parent();
   mesh_instance_ids_.push_back(id);
   return id;
@@ -145,14 +146,18 @@ int GodotScene::AddCylinderInstance(double radius, double height) {
     cylinder_->set_height(1.0);
   }
   int id = AddInstance(cylinder_);
-  SetInstanceScale(id, radius*2.0, radius*2.0, height);
+  SetInstanceScale(id, radius*2.0, height, radius*2.0);
   return id;
 }
 
-void GodotScene::SetInstanceScale(int id, double sx, double sy, double sz) {
-  Spatial *instance = get_spatial_instance(id);
-  instance->set_scale(Vector3(sx, sy, sz));
-  instance->notification(Spatial::NOTIFICATION_TRANSFORM_CHANGED);
+int GodotScene::AddPlaneInstance(double x_size, double y_size) {
+  if (!plane_) {
+    plane_ = memnew(PlaneMesh);
+    plane_->set_size(Size2(1.0, 1.0));
+  }
+  int id = AddInstance(plane_);
+  SetInstanceScale(id, x_size, y_size, 1.0);
+  return id;
 }
 
 void GodotScene::InitDepthShader() {
@@ -244,7 +249,6 @@ Transform ConvertToGodotTransform(const Eigen::Isometry3d& transform) {
 void GodotScene::SetInstancePose(Spatial* instance,
                                  const Eigen::Isometry3d& X_WI) {
   instance->set_transform(ConvertToGodotTransform(X_WI));
-  instance->notification(Spatial::NOTIFICATION_TRANSFORM_CHANGED);
 }
 
 void GodotScene::SetInstancePose(int id, const Eigen::Isometry3d& X_WI) {
@@ -254,6 +258,15 @@ void GodotScene::SetInstancePose(int id, const Eigen::Isometry3d& X_WI) {
 
 void GodotScene::SetCameraPose(const Eigen::Isometry3d& X_WI) {
   SetInstancePose(camera_, X_WI);
+}
+
+void GodotScene::SetInstanceScale(int id, double sx, double sy, double sz) {
+  Spatial *instance = get_spatial_instance(id);
+  instance->set_scale(Vector3(sx, sy, sz));
+}
+
+void GodotScene::FlushTransformNotifications() {
+  tree_->flush_transform_notifications();
 }
 
 } // namespace godotvis
