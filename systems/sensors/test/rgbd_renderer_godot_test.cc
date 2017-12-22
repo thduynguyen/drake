@@ -15,6 +15,10 @@ namespace drake {
 namespace systems {
 namespace sensors {
 
+namespace {
+const double kTerrainSize = 100.;
+}
+
 class RgbdRendererGodot final : public RgbdRenderer {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(RgbdRendererGodot)
@@ -58,9 +62,15 @@ class RgbdRendererGodot::Impl {
   Impl(RgbdRendererGodot* parent, const Eigen::Isometry3d& X_WC)
       : parent_(parent) {
     scene_.Initialize();
-    scene_.AddCamera(parent_->config().fov_y * 180. / M_PI,
-                     parent_->config().z_near, parent_->config().z_far);
     scene_.set_viewport_size(parent_->config().width, parent_->config().height);
+    //scene_.AddCamera(parent_->config().fov_y * 180. / M_PI,
+                     //parent_->config().z_near, parent_->config().z_far);
+    scene_.AddCamera(65., 0.1, 100.0);
+    Eigen::Isometry3d camera_pose{Eigen::Isometry3d::Identity()};
+    camera_pose.translation() = Eigen::Vector3d(0., 0., 3.);
+    scene_.SetCameraPose(camera_pose);
+
+    //scene_.SetCameraPose(X_WC);
     // TODO: Setup environment, lighting, GI Probes, etc...
     // Probably from a json config file
     scene_.SetupEnvironment(path + "night.hdr");
@@ -75,7 +85,15 @@ class RgbdRendererGodot::Impl {
     scene_.Finish();
   }
 
-  void AddFlatTerrain() {}
+  void AddFlatTerrain() {
+    //int plane_id = scene_.AddPlaneInstance(kTerrainSize, kTerrainSize);
+    int plane_id = scene_.AddCubeInstance(.5, .5, .5);
+    auto color =
+        ColorPalette::Normalize(parent_->color_palette().get_terrain_color());
+    //scene_.SetInstanceColor(plane_id, color.r, color.g, color.b);
+    scene_.SetInstanceColor(plane_id, 1.0, 0.0, 0.0);
+    scene_.SetInstancePose(plane_id, Eigen::Isometry3d::Identity());
+  }
 
   optional<RgbdRenderer::VisualIndex> RegisterVisual(
       const DrakeShapes::VisualElement& visual, int body_id);
@@ -86,15 +104,22 @@ class RgbdRendererGodot::Impl {
   void UpdateViewpoint(const Eigen::Isometry3d& X_WR) const;
 
   void RenderColorImage(ImageRgba8U* color_image_out) const {
+     static int count = 0;
      scene_.ApplyMaterialShader();
+     scene_.FlushTransformNotifications();
      godot_renderer.Draw();
      Ref<::Image> image = scene_.Capture();
+     std::string filename = "/home/duynguyen/Downloads/rgbd_test" +
+                            std::to_string(count++) + ".png";
+     std::cout << "save image to: " << filename << std::endl;
+     image->save_png(filename.c_str());
      ConvertGodotImage(color_image_out, image);
      image.unref();
   }
 
   void RenderDepthImage(ImageDepth32F* depth_image_out) const {
      scene_.ApplyDepthShader();
+     scene_.FlushTransformNotifications();
      godot_renderer.Draw();
      Ref<::Image> image = scene_.Capture();
      ConvertGodotImage(depth_image_out, image);
@@ -166,16 +191,22 @@ optional<RgbdRenderer::VisualIndex> RgbdRendererGodot::Impl::RegisterVisual(
     case DrakeShapes::BOX: {
       auto box = dynamic_cast<const DrakeShapes::Box&>(geometry);
       godot_id = scene_.AddCubeInstance(box.size(0), box.size(1), box.size(2));
+      auto color = visual.getMaterial();
+      scene_.SetInstanceColor(godot_id, color[0], color[1], color[2]);
       break;
     }
     case DrakeShapes::SPHERE: {
       auto sphere = dynamic_cast<const DrakeShapes::Sphere&>(geometry);
       godot_id = scene_.AddSphereInstance(sphere.radius);
+      auto color = visual.getMaterial();
+      scene_.SetInstanceColor(godot_id, color[0], color[1], color[2]);
       break;
     }
     case DrakeShapes::CYLINDER: {
       auto cylinder = dynamic_cast<const DrakeShapes::Cylinder&>(geometry);
       godot_id = scene_.AddCylinderInstance(cylinder.length, cylinder.radius);
+      auto color = visual.getMaterial();
+      scene_.SetInstanceColor(godot_id, color[0], color[1], color[2]);
       break;
     }
     case DrakeShapes::MESH: {
@@ -244,20 +275,46 @@ using RgbdRendererGodotTest = RgbdRendererTest<RgbdRendererGodot>;
 
 using Eigen::Isometry3d;
 
-TEST_F(RgbdRendererGodotTest, InstantiationTest) {
-  Init(Isometry3d::Identity());
+//TEST_F(RgbdRendererGodotTest, InstantiationTest) {
+  //Init(Isometry3d::Identity());
 
-  EXPECT_EQ(renderer_->config().width, kWidth);
-  EXPECT_EQ(renderer_->config().height, kHeight);
-  EXPECT_EQ(renderer_->config().fov_y, kFovY);
-  // TODO(duy): Actually check these params inside Impl::scene_'s viewport
-}
+  //EXPECT_EQ(renderer_->config().width, kWidth);
+  //EXPECT_EQ(renderer_->config().height, kHeight);
+  //EXPECT_EQ(renderer_->config().fov_y, kFovY);
+  //// TODO(duy): Actually check these params inside Impl::scene_'s viewport
+//}
 
-TEST_F(RgbdRendererGodotTest, NoBodyTest) {
-  Init(Isometry3d::Identity());
+//TEST_F(RgbdRendererGodotTest, NoBodyTest) {
+  //Init(Isometry3d::Identity());
+  //RenderColorImage();
+
+  //VerifyUniformColor(renderer_->color_palette().get_sky_color(), 0u);
+//}
+
+TEST_F(RgbdRendererGodotTest, TerrainTest) {
+  Init(X_WC_, true);
   RenderColorImage();
 
-  VerifyUniformColor(renderer_->color_palette().get_sky_color(), 0u);
+  const auto& kTerrain = renderer_->color_palette().get_terrain_color();
+  // At two different distances.
+  for (float depth : {2.f, 5.f}) {
+    X_WC_.translation().z() = depth;
+    renderer_->UpdateViewpoint(X_WC_);
+    RenderColorImage();
+    //VerifyUniformColor(kTerrain, 255u);
+  }
+
+  // Closer than kZNear.
+  X_WC_.translation().z() = kZNear - 1e-5;
+  renderer_->UpdateViewpoint(X_WC_);
+  RenderColorImage();
+  //VerifyUniformColor(kTerrain, 255u);
+
+  // Farther than kZFar.
+  X_WC_.translation().z() = kZFar + 1e-3;
+  renderer_->UpdateViewpoint(X_WC_);
+  RenderColorImage();
+  //VerifyUniformColor(kTerrain, 255u);
 }
 
 //godotvis::GodotRenderer renderer(1280, 960);

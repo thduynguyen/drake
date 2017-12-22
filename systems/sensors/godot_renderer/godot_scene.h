@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-#include <vector>
+#include <map>
 #include <utility>
 
 #include <Eigen/Dense>
@@ -20,12 +20,21 @@ class GodotScene {
   Environment* env = NULL;
   MeshInstance* mesh_instance_ = NULL;
   Ref<ShaderMaterial> shader_material_;
-  SpatialMaterial* material = NULL;
+  //SpatialMaterial* material = NULL;
   CubeMesh* cube_ = nullptr;
   SphereMesh* sphere_ = nullptr;
   CylinderMesh* cylinder_ = nullptr;
   PlaneMesh* plane_ = nullptr;
-  std::vector<int> mesh_instance_ids_;
+
+  /// List of materials for a mesh, one for each surface
+  using MaterialList = std::vector<Ref<SpatialMaterial>>;
+  /// Mapping from instance id to its material list
+  std::map<int, MaterialList> instance_materials_;
+
+  struct MeshMaterialsPair {
+    Ref<Mesh> mesh;
+    MaterialList materials;
+  };
 
 public:
   GodotScene() {}
@@ -64,13 +73,14 @@ public:
   void SetInstancePose(Spatial* instance, const Eigen::Isometry3d& X_WI);
 
   void SetInstanceScale(int id, double sx, double sy, double sz);
+  void SetInstanceColor(int id, float r, float g, float b);
   void FlushTransformNotifications();
 
 private:
   void InitDepthShader();
   Spatial* get_spatial_instance(int id);
-  Ref<Mesh> LoadMesh(const std::string& filename);
-  int AddInstance(const Ref<Mesh>& mesh);
+  MeshMaterialsPair LoadMesh(const std::string& filename);
+  int AddInstance(const MeshMaterialsPair& mesh_materials);
 };
 
 /// Utility functon to convert Eigen's transform to Godot's transform

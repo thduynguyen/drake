@@ -71,6 +71,7 @@ int main(int argc, char *argv[]) {
   image->save_png("/home/duynguyen/Downloads/depth1.png");
 
   scene.set_viewport_size(320, 240);
+  scene.SetInstanceColor(cube_id, 1., 1., 1.);
   scene.ApplyMaterialShader();
   renderer.Draw();
   image = scene.Capture();
@@ -82,6 +83,8 @@ int main(int argc, char *argv[]) {
   image->save_png("/home/duynguyen/Downloads/depth2.png");
 
   scene.set_viewport_size(640, 480);
+  scene.SetInstanceColor(cylinder_id, 1., 1., 1.);
+  scene.SetInstanceColor(cube_id, 1., 0., 0.);
   scene.ApplyMaterialShader();
   renderer.Draw();
   scene.Capture()->save_png("/home/duynguyen/Downloads/rgb3.png");

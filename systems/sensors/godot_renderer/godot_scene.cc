@@ -1,6 +1,7 @@
 #include "drake/systems/sensors/godot_renderer/godot_scene.h"
 #include "servers/visual/visual_server_global.h"
 #include <stdexcept>
+#include <iostream>
 
 namespace godotvis {
 
@@ -67,7 +68,7 @@ Ref<Image> GodotScene::Capture() {
 }
 
 void GodotScene::ApplyDepthShader() {
-  for (int id : mesh_instance_ids_) {
+  for (const auto& [id, materials]: instance_materials_) {
     MeshInstance *instance =
         Object::cast_to<MeshInstance>(scene_root_->get_child(id));
     Ref<Mesh> mesh = instance->get_mesh();
@@ -79,12 +80,11 @@ void GodotScene::ApplyDepthShader() {
 }
 
 void GodotScene::ApplyMaterialShader() {
-  for (int id : mesh_instance_ids_) {
+  for (const auto& [id, materials]: instance_materials_) {
     MeshInstance *instance =
         Object::cast_to<MeshInstance>(scene_root_->get_child(id));
-    Ref<Mesh> mesh = instance->get_mesh();
-    for (int i = 0; i < mesh->get_surface_count(); ++i)
-      instance->set_surface_material(i, mesh->surface_get_material(i));
+    for (int i = 0; i < materials.size(); ++i)
+      instance->set_surface_material(i, materials[i]);
   }
   SpatialMaterial::flush_changes();
   env->set_background(Environment::BG_COLOR);
@@ -101,20 +101,21 @@ void GodotScene::Finish() {
   }
 }
 
-int GodotScene::AddInstance(const Ref<Mesh>& mesh) {
+int GodotScene::AddInstance(const MeshMaterialsPair& mesh_materials) {
   MeshInstance *instance = memnew(MeshInstance);
   scene_root_->add_child(instance); // Must add before doing any settings
-  instance->set_mesh(mesh);
+  instance->set_mesh(mesh_materials.mesh);
   instance->set_notify_local_transform(true);
   instance->set_notify_transform(true);
   int id = instance->get_position_in_parent();
-  mesh_instance_ids_.push_back(id);
+  instance_materials_[id] = mesh_materials.materials;
+  for (int i = 0; i < mesh_materials.materials.size(); ++i)
+    instance->set_surface_material(i, mesh_materials.materials[i]);
   return id;
 }
 
 int GodotScene::AddMeshInstance(const std::string &filename) {
-  Ref<Mesh> mesh = LoadMesh(filename);
-  return AddInstance(mesh);
+  return AddInstance(LoadMesh(filename));
 }
 
 int GodotScene::AddCubeInstance(double x_length, double y_length, double z_length) {
@@ -122,7 +123,12 @@ int GodotScene::AddCubeInstance(double x_length, double y_length, double z_lengt
     cube_ = memnew(CubeMesh);
     cube_->set_size(Vector3(1.0, 1.0, 1.0));
   }
-  int id = AddInstance(cube_);
+  Ref<SpatialMaterial> material{memnew(SpatialMaterial)};
+  material->set_flag(SpatialMaterial::FLAG_UNSHADED, true);
+  material->set_albedo(Color(1.0, 0.0, 0.0));
+  material->set_script_instance(nullptr);
+  SpatialMaterial::flush_changes();
+  int id = AddInstance(MeshMaterialsPair{cube_, {material}});
   SetInstanceScale(id, x_length, y_length, z_length);
   return id;
 }
@@ -133,7 +139,12 @@ int GodotScene::AddSphereInstance(double radius) {
     sphere_->set_radius(0.5);
     sphere_->set_height(1.0);
   }
-  int id = AddInstance(sphere_);
+  Ref<SpatialMaterial> material{memnew(SpatialMaterial)};
+  material->set_flag(SpatialMaterial::FLAG_UNSHADED, true);
+  material->set_albedo(Color(0.0, 0.0, 1.0));
+  material->set_script_instance(nullptr);
+  SpatialMaterial::flush_changes();
+  int id = AddInstance(MeshMaterialsPair{sphere_, {material}});
   SetInstanceScale(id, radius*2.0, radius*2.0, radius*2.0);
   return id;
 }
@@ -145,7 +156,11 @@ int GodotScene::AddCylinderInstance(double radius, double height) {
     cylinder_->set_bottom_radius(0.5);
     cylinder_->set_height(1.0);
   }
-  int id = AddInstance(cylinder_);
+  Ref<SpatialMaterial> material{memnew(SpatialMaterial)};
+  material->set_flag(SpatialMaterial::FLAG_UNSHADED, true);
+  material->set_albedo(Color(0.0, 1.0, 0.0));
+  SpatialMaterial::flush_changes();
+  int id = AddInstance(MeshMaterialsPair{cylinder_, {material}});
   SetInstanceScale(id, radius*2.0, height, radius*2.0);
   return id;
 }
@@ -155,7 +170,11 @@ int GodotScene::AddPlaneInstance(double x_size, double y_size) {
     plane_ = memnew(PlaneMesh);
     plane_->set_size(Size2(1.0, 1.0));
   }
-  int id = AddInstance(plane_);
+  Ref<SpatialMaterial> material{memnew(SpatialMaterial)};
+  material->set_flag(SpatialMaterial::FLAG_UNSHADED, true);
+  material->set_albedo(Color(1.0, 1.0, 1.0));
+  SpatialMaterial::flush_changes();
+  int id = AddInstance(MeshMaterialsPair{plane_, {material}});
   SetInstanceScale(id, x_size, y_size, 1.0);
   return id;
 }
@@ -185,7 +204,7 @@ Spatial *GodotScene::get_spatial_instance(int id) {
   return Object::cast_to<Spatial>(instance);
 }
 
-Ref<Mesh> GodotScene::LoadMesh(const std::string &filename) {
+GodotScene::MeshMaterialsPair GodotScene::LoadMesh(const std::string &filename) {
   // TODO: properly load a glTF file here!
   // Load a mesh
   // This calls all the way down to RasterizerStorageGLES3::mesh_add_surface(),
@@ -196,7 +215,7 @@ Ref<Mesh> GodotScene::LoadMesh(const std::string &filename) {
   Ref<ArrayMesh> mesh = ResourceLoader::load(String(filename.c_str()));
 
   // Load its material
-  material = memnew(SpatialMaterial);
+  Ref<SpatialMaterial> material{memnew(SpatialMaterial)};
   material->set_albedo(Color(1.0, 1.0, 1.0, 1.0));
 
   // TODO: remove this hack
@@ -222,7 +241,11 @@ Ref<Mesh> GodotScene::LoadMesh(const std::string &filename) {
   mesh->surface_set_material(2, material);
   mesh->surface_set_material(3, material);
 
-  return mesh;
+  MaterialList materials;
+  for(int i = 0; i<4; ++i)
+    materials.push_back(material);
+
+  return GodotScene::MeshMaterialsPair{mesh, materials};
 }
 
 void GodotScene::set_viewport_size(int width, int height) {
@@ -256,13 +279,21 @@ void GodotScene::SetInstancePose(int id, const Eigen::Isometry3d& X_WI) {
   SetInstancePose(instance, X_WI);
 }
 
-void GodotScene::SetCameraPose(const Eigen::Isometry3d& X_WI) {
-  SetInstancePose(camera_, X_WI);
+void GodotScene::SetCameraPose(const Eigen::Isometry3d& X_WC) {
+  std::cout << "Set camera pose: " << X_WC.translation().transpose() << std::endl;
+  std::cout << X_WC.rotation() << std::endl;
+  SetInstancePose(camera_, X_WC);
 }
 
 void GodotScene::SetInstanceScale(int id, double sx, double sy, double sz) {
   Spatial *instance = get_spatial_instance(id);
   instance->set_scale(Vector3(sx, sy, sz));
+}
+
+void GodotScene::SetInstanceColor(int id, float r, float g, float b) {
+  for(auto& material: instance_materials_[id])
+    material->set_albedo(Color(r, g, b));
+  SpatialMaterial::flush_changes();
 }
 
 void GodotScene::FlushTransformNotifications() {
