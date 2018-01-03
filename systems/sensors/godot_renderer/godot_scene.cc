@@ -50,6 +50,7 @@ void GodotScene::SetupEnvironment(const std::string &env_filename) {
 }
 
 void GodotScene::SetBackgroundColor(float r, float g, float b) {
+  //TODO(duy): alpha doesn't work!!! Godot switches it to 1.0 somewhere?
   env->set_bg_color(Color{r, g, b, 1.0f});
 }
 

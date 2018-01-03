@@ -282,7 +282,7 @@ using RgbdRendererGodotTest = RgbdRendererTest<RgbdRendererGodot>;
 
 using Eigen::Isometry3d;
 
-TEST_F(RgbdRendererGodotTest, DISABLED_InstantiationTest) {
+TEST_F(RgbdRendererGodotTest, InstantiationTest) {
   Init(Isometry3d::Identity());
 
   EXPECT_EQ(renderer_->config().width, kWidth);
@@ -291,11 +291,11 @@ TEST_F(RgbdRendererGodotTest, DISABLED_InstantiationTest) {
   // TODO(duy): Actually check these params inside Impl::scene_'s viewport
 }
 
-TEST_F(RgbdRendererGodotTest, DISABLED_NoBodyTest) {
+TEST_F(RgbdRendererGodotTest, NoBodyTest) {
   Init(Isometry3d::Identity());
   RenderColorImage();
 
-  VerifyUniformColor(renderer_->color_palette().get_sky_color(), 0u);
+  VerifyUniformColor(renderer_->color_palette().get_sky_color(), 255u);
 }
 
 TEST_F(RgbdRendererGodotTest, TerrainTest) {
