@@ -68,12 +68,15 @@ public:
   int AddCylinderInstance(double radius, double height);
   int AddPlaneInstance(double x_size, double y_size);
 
+  void SetInstanceTranslation(int id, const Eigen::Vector3d& t_WI);
+  void SetInstanceRotation(int id, const Eigen::Isometry3d& t_WI);
+
   void SetInstancePose(int id, const Eigen::Isometry3d& X_WI);
 
   void SetInstancePose(Spatial* instance, const Eigen::Isometry3d& X_WI);
 
   void SetInstanceScale(int id, double sx, double sy, double sz);
-  void SetInstanceColor(int id, float r, float g, float b);
+  void SetInstanceColor(int id, float r, float g, float b, float alpha = 1.0f);
   void FlushTransformNotifications();
 
 private:
@@ -81,6 +84,7 @@ private:
   Spatial* get_spatial_instance(int id);
   MeshMaterialsPair LoadMesh(const std::string& filename);
   int AddInstance(const MeshMaterialsPair& mesh_materials);
+  void SetInstanceLocalTransform(int id, const Eigen::Isometry3d& X_WI);
 };
 
 /// Utility functon to convert Eigen's transform to Godot's transform

@@ -16,7 +16,7 @@ namespace systems {
 namespace sensors {
 
 namespace {
-const double kTerrainSize = 100.;
+const double kTerrainSize = 50.;
 }
 
 class RgbdRendererGodot final : public RgbdRenderer {
@@ -63,14 +63,11 @@ class RgbdRendererGodot::Impl {
       : parent_(parent) {
     scene_.Initialize();
     scene_.set_viewport_size(parent_->config().width, parent_->config().height);
-    //scene_.AddCamera(parent_->config().fov_y * 180. / M_PI,
-                     //parent_->config().z_near, parent_->config().z_far);
-    scene_.AddCamera(65., 0.1, 100.0);
-    Eigen::Isometry3d camera_pose{Eigen::Isometry3d::Identity()};
-    camera_pose.translation() = Eigen::Vector3d(0., 0., 3.);
-    scene_.SetCameraPose(camera_pose);
+    scene_.AddCamera(parent_->config().fov_y * 180. / M_PI,
+                     parent_->config().z_near, parent_->config().z_far);
+    std::cout << "znear far: " << parent_->config().z_near << " " << parent_->config().z_far << std::endl;
 
-    //scene_.SetCameraPose(X_WC);
+    scene_.SetCameraPose(rotate_to_godot_camera(X_WC));
     // TODO: Setup environment, lighting, GI Probes, etc...
     // Probably from a json config file
     scene_.SetupEnvironment(path + "night.hdr");
@@ -86,13 +83,10 @@ class RgbdRendererGodot::Impl {
   }
 
   void AddFlatTerrain() {
-    //int plane_id = scene_.AddPlaneInstance(kTerrainSize, kTerrainSize);
-    int plane_id = scene_.AddCubeInstance(.5, .5, .5);
+    int plane_id = scene_.AddPlaneInstance(kTerrainSize, kTerrainSize);
     auto color =
         ColorPalette::Normalize(parent_->color_palette().get_terrain_color());
-    //scene_.SetInstanceColor(plane_id, color.r, color.g, color.b);
-    scene_.SetInstanceColor(plane_id, 1.0, 0.0, 0.0);
-    scene_.SetInstancePose(plane_id, Eigen::Isometry3d::Identity());
+    scene_.SetInstanceColor(plane_id, color.r, color.g, color.b);
   }
 
   optional<RgbdRenderer::VisualIndex> RegisterVisual(
@@ -138,6 +132,16 @@ class RgbdRendererGodot::Impl {
   void ConvertGodotImage(ImageDepth32F* image_out,
                          Ref<::Image>& image_in) const;
 
+  /// Rotate Drake's camera coordinate to Godot's. Drake's camera z axis points
+  /// forward, whereas Godot's camera z axis points backward as in OpenGL.
+  Eigen::Isometry3d rotate_to_godot_camera(
+      const Eigen::Isometry3d& X_WC) const {
+    std::cout << "Drake camera pose: " << X_WC.translation().transpose() << std::endl;
+    std::cout << X_WC.rotation() << std::endl;
+    Eigen::Isometry3d X_WCgodot = X_WC;
+    return X_WCgodot.rotate(Eigen::AngleAxisd(M_PI, Eigen::Vector3d::UnitX()));
+  }
+
   RgbdRendererGodot* parent_ = nullptr;
   mutable godotvis::GodotScene scene_;
   /// List of Godot mesh instance indices, each mesh instance corresponds to one
@@ -159,7 +163,7 @@ void RgbdRendererGodot::Impl::ConvertGodotImage(ImageRgba8U* image_out,
       image_out->at(x,y)[0] = std::round(color.r*255);
       image_out->at(x,y)[1] = std::round(color.g*255);
       image_out->at(x,y)[2] = std::round(color.b*255);
-      image_out->at(x,y)[3] = 0;
+      image_out->at(x,y)[3] = std::round(color.a*255);
     }
   }
   godot_image->unlock();
@@ -180,7 +184,7 @@ void RgbdRendererGodot::Impl::ConvertGodotImage(ImageDepth32F* image_out,
 
 void RgbdRendererGodot::Impl::UpdateViewpoint(
     const Eigen::Isometry3d& X_WC) const {
-  scene_.SetCameraPose(X_WC);
+  scene_.SetCameraPose(rotate_to_godot_camera(X_WC));
 }
 
 optional<RgbdRenderer::VisualIndex> RgbdRendererGodot::Impl::RegisterVisual(
@@ -296,25 +300,28 @@ TEST_F(RgbdRendererGodotTest, TerrainTest) {
   RenderColorImage();
 
   const auto& kTerrain = renderer_->color_palette().get_terrain_color();
+  const auto& kSky = renderer_->color_palette().get_sky_color();
+
   // At two different distances.
   for (float depth : {2.f, 5.f}) {
     X_WC_.translation().z() = depth;
     renderer_->UpdateViewpoint(X_WC_);
     RenderColorImage();
-    //VerifyUniformColor(kTerrain, 255u);
+    VerifyUniformColor(kTerrain, 255u);
   }
 
+  std::cout << "kznear far: " << kZNear << " " << kZFar << std::endl;
   // Closer than kZNear.
   X_WC_.translation().z() = kZNear - 1e-5;
   renderer_->UpdateViewpoint(X_WC_);
   RenderColorImage();
-  //VerifyUniformColor(kTerrain, 255u);
+  VerifyUniformColor(kSky, 255u);
 
   // Farther than kZFar.
   X_WC_.translation().z() = kZFar + 1e-3;
   renderer_->UpdateViewpoint(X_WC_);
   RenderColorImage();
-  //VerifyUniformColor(kTerrain, 255u);
+  VerifyUniformColor(kSky, 255u);
 }
 
 //godotvis::GodotRenderer renderer(1280, 960);

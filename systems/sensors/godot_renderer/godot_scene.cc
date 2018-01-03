@@ -118,7 +118,8 @@ int GodotScene::AddMeshInstance(const std::string &filename) {
   return AddInstance(LoadMesh(filename));
 }
 
-int GodotScene::AddCubeInstance(double x_length, double y_length, double z_length) {
+int GodotScene::AddCubeInstance(double x_length, double y_length,
+                                double z_length) {
   if (!cube_) {
     cube_ = memnew(CubeMesh);
     cube_->set_size(Vector3(1.0, 1.0, 1.0));
@@ -141,7 +142,7 @@ int GodotScene::AddSphereInstance(double radius) {
   }
   Ref<SpatialMaterial> material{memnew(SpatialMaterial)};
   material->set_flag(SpatialMaterial::FLAG_UNSHADED, true);
-  material->set_albedo(Color(0.0, 0.0, 1.0));
+  material->set_albedo(Color(0.0, 1.0, 0.0));
   material->set_script_instance(nullptr);
   SpatialMaterial::flush_changes();
   int id = AddInstance(MeshMaterialsPair{sphere_, {material}});
@@ -158,9 +159,11 @@ int GodotScene::AddCylinderInstance(double radius, double height) {
   }
   Ref<SpatialMaterial> material{memnew(SpatialMaterial)};
   material->set_flag(SpatialMaterial::FLAG_UNSHADED, true);
-  material->set_albedo(Color(0.0, 1.0, 0.0));
+  material->set_albedo(Color(0.0, 0.0, 1.0));
   SpatialMaterial::flush_changes();
   int id = AddInstance(MeshMaterialsPair{cylinder_, {material}});
+  // this call rotates the mesh into Drake's convention
+  SetInstancePose(id, Eigen::Isometry3d::Identity());
   SetInstanceScale(id, radius*2.0, height, radius*2.0);
   return id;
 }
@@ -175,7 +178,9 @@ int GodotScene::AddPlaneInstance(double x_size, double y_size) {
   material->set_albedo(Color(1.0, 1.0, 1.0));
   SpatialMaterial::flush_changes();
   int id = AddInstance(MeshMaterialsPair{plane_, {material}});
-  SetInstanceScale(id, x_size, y_size, 1.0);
+  // this call rotates the mesh into Drake's convention
+  SetInstancePose(id, Eigen::Isometry3d::Identity());
+  SetInstanceScale(id, x_size, 1.0, y_size);
   return id;
 }
 
@@ -271,7 +276,26 @@ Transform ConvertToGodotTransform(const Eigen::Isometry3d& transform) {
 
 void GodotScene::SetInstancePose(Spatial* instance,
                                  const Eigen::Isometry3d& X_WI) {
-  instance->set_transform(ConvertToGodotTransform(X_WI));
+  const auto& t = X_WI.translation();
+  instance->set_translation(Vector3(t[0], t[1], t[2]));
+  const auto& R = X_WI.rotation();
+  // clang-format off
+  Basis basis(R(0, 0), R(0, 1), R(0, 2),
+              R(1, 0), R(1, 1), R(1, 2),
+              R(2, 0), R(2, 1), R(2, 2));
+  // clang-format on
+  // TODO(duy): Add comment here about Godot's plane coordinate frame
+  // and the differences of set_transform vs set_rotation
+  Mesh* mesh = Object::cast_to<MeshInstance>(instance)->get_mesh().ptr();
+  if (mesh->get_class_name() == "CylinderMesh" ||
+      mesh->get_class_name() == "PlaneMesh") {
+    // clang-format off
+    basis = Basis(1., 0., 0.,
+                  0., 0., -1.,
+                  0., 1., 0.) * basis;
+    // clang-format on
+  }
+  instance->set_rotation(basis.get_rotation());
 }
 
 void GodotScene::SetInstancePose(int id, const Eigen::Isometry3d& X_WI) {
@@ -282,7 +306,17 @@ void GodotScene::SetInstancePose(int id, const Eigen::Isometry3d& X_WI) {
 void GodotScene::SetCameraPose(const Eigen::Isometry3d& X_WC) {
   std::cout << "Set camera pose: " << X_WC.translation().transpose() << std::endl;
   std::cout << X_WC.rotation() << std::endl;
-  SetInstancePose(camera_, X_WC);
+  //camera_->set_transform(ConvertToGodotTransform(X_WC));
+  camera_->set_transform(ConvertToGodotTransform(Eigen::Isometry3d::Identity()));
+  const auto& t = X_WC.translation();
+  camera_->set_translation(Vector3(t[0], t[1], t[2]));
+  const auto& R = X_WC.rotation();
+  // clang-format off
+  Basis basis(R(0, 0), R(0, 1), R(0, 2),
+              R(1, 0), R(1, 1), R(1, 2),
+              R(2, 0), R(2, 1), R(2, 2));
+  // clang-format on
+  camera_->set_rotation(basis.get_rotation());
 }
 
 void GodotScene::SetInstanceScale(int id, double sx, double sy, double sz) {
@@ -290,10 +324,18 @@ void GodotScene::SetInstanceScale(int id, double sx, double sy, double sz) {
   instance->set_scale(Vector3(sx, sy, sz));
 }
 
-void GodotScene::SetInstanceColor(int id, float r, float g, float b) {
-  for(auto& material: instance_materials_[id])
-    material->set_albedo(Color(r, g, b));
+void GodotScene::SetInstanceColor(int id, float r, float g, float b,
+                                  float alpha) {
+  for(auto& material: instance_materials_[id]) {
+    material->set_albedo(Color(r, g, b, alpha));
+  }
   SpatialMaterial::flush_changes();
+}
+
+void GodotScene::SetInstanceLocalTransform(int id,
+                                 const Eigen::Isometry3d& X_WI) {
+  Spatial *instance = get_spatial_instance(id);
+  instance->set_transform(ConvertToGodotTransform(X_WI));
 }
 
 void GodotScene::FlushTransformNotifications() {

@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
   scene.AddCamera(65.0, 0.1, 100.0);
 
   Eigen::Isometry3d camera_pose{Eigen::Isometry3d::Identity()};
-  camera_pose.translation() = Eigen::Vector3d(0., 2.5, 15.);
+  camera_pose.translation() = Eigen::Vector3d(0., 0., 15.);
   scene.SetCameraPose(camera_pose);
 
   //int id = scene.AddMeshInstance(path + "godot_ball.mesh");
@@ -39,17 +39,22 @@ int main(int argc, char *argv[]) {
     std::cout << "Pass!" << std::endl;
 
   int cube_id = scene.AddCubeInstance(1., 1., 1.);
+
   int sphere_id = scene.AddSphereInstance(0.5);
-
-  int cylinder_id = scene.AddCylinderInstance(0.5, 2.0);
-  int plane_id = scene.AddPlaneInstance(3.0, 3.0);
-
+  pose = Eigen::Isometry3d::Identity();
   pose.translation() = Eigen::Vector3d(1.0, 0., 0.);
   scene.SetInstancePose(sphere_id, pose);
 
+  int cylinder_id = scene.AddCylinderInstance(0.5, 2.0);
+  pose = Eigen::Isometry3d::Identity();
   pose.translation() = Eigen::Vector3d(-1.0, 0., 0.);
+  pose.rotate(Eigen::AngleAxisd(M_PI/2.0, Eigen::Vector3d::UnitX()));
   scene.SetInstancePose(cylinder_id, pose);
-  pose.translation() = Eigen::Vector3d(0., 0., 1.);
+
+  int plane_id = scene.AddPlaneInstance(5.0, 5.0);
+  pose = Eigen::Isometry3d::Identity();
+  pose.translation() = Eigen::Vector3d(-1.0, 0., 0.);
+  pose.rotate(Eigen::AngleAxisd(M_PI/3.0, Eigen::Vector3d::UnitY()));
   scene.SetInstancePose(plane_id, pose);
 
   // Need this before drawing to flush all transform changes to the visual server
