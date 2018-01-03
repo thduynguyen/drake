@@ -16,7 +16,11 @@ namespace systems {
 namespace sensors {
 
 namespace {
-const double kTerrainSize = 50.;
+// TODO(kunimatsu-tri) Add support for the arbitrary clipping planes.
+// TODO(sean) unify these same constants in rgbd_renderer_vtk.cc
+const double kClippingPlaneNear = 0.01;
+const double kClippingPlaneFar = 100.;
+const double kTerrainSize = 100.;
 }
 
 class RgbdRendererGodot final : public RgbdRenderer {
@@ -63,9 +67,8 @@ class RgbdRendererGodot::Impl {
       : parent_(parent) {
     scene_.Initialize();
     scene_.set_viewport_size(parent_->config().width, parent_->config().height);
-    scene_.AddCamera(parent_->config().fov_y * 180. / M_PI,
-                     parent_->config().z_near, parent_->config().z_far);
-    std::cout << "znear far: " << parent_->config().z_near << " " << parent_->config().z_far << std::endl;
+    scene_.AddCamera(parent_->config().fov_y * 180. / M_PI, kClippingPlaneNear,
+                     kClippingPlaneFar);
 
     scene_.SetCameraPose(rotate_to_godot_camera(X_WC));
     // TODO: Setup environment, lighting, GI Probes, etc...
@@ -139,7 +142,7 @@ class RgbdRendererGodot::Impl {
     std::cout << "Drake camera pose: " << X_WC.translation().transpose() << std::endl;
     std::cout << X_WC.rotation() << std::endl;
     Eigen::Isometry3d X_WCgodot = X_WC;
-    return X_WCgodot.rotate(Eigen::AngleAxisd(M_PI, Eigen::Vector3d::UnitX()));
+    return X_WCgodot.rotate(Eigen::AngleAxisd(M_PI, Eigen::Vector3d::UnitY()));
   }
 
   RgbdRendererGodot* parent_ = nullptr;
@@ -279,21 +282,21 @@ using RgbdRendererGodotTest = RgbdRendererTest<RgbdRendererGodot>;
 
 using Eigen::Isometry3d;
 
-//TEST_F(RgbdRendererGodotTest, InstantiationTest) {
-  //Init(Isometry3d::Identity());
+TEST_F(RgbdRendererGodotTest, DISABLED_InstantiationTest) {
+  Init(Isometry3d::Identity());
 
-  //EXPECT_EQ(renderer_->config().width, kWidth);
-  //EXPECT_EQ(renderer_->config().height, kHeight);
-  //EXPECT_EQ(renderer_->config().fov_y, kFovY);
-  //// TODO(duy): Actually check these params inside Impl::scene_'s viewport
-//}
+  EXPECT_EQ(renderer_->config().width, kWidth);
+  EXPECT_EQ(renderer_->config().height, kHeight);
+  EXPECT_EQ(renderer_->config().fov_y, kFovY);
+  // TODO(duy): Actually check these params inside Impl::scene_'s viewport
+}
 
-//TEST_F(RgbdRendererGodotTest, NoBodyTest) {
-  //Init(Isometry3d::Identity());
-  //RenderColorImage();
+TEST_F(RgbdRendererGodotTest, DISABLED_NoBodyTest) {
+  Init(Isometry3d::Identity());
+  RenderColorImage();
 
-  //VerifyUniformColor(renderer_->color_palette().get_sky_color(), 0u);
-//}
+  VerifyUniformColor(renderer_->color_palette().get_sky_color(), 0u);
+}
 
 TEST_F(RgbdRendererGodotTest, TerrainTest) {
   Init(X_WC_, true);
@@ -310,20 +313,58 @@ TEST_F(RgbdRendererGodotTest, TerrainTest) {
     VerifyUniformColor(kTerrain, 255u);
   }
 
-  std::cout << "kznear far: " << kZNear << " " << kZFar << std::endl;
   // Closer than kZNear.
   X_WC_.translation().z() = kZNear - 1e-5;
   renderer_->UpdateViewpoint(X_WC_);
   RenderColorImage();
-  VerifyUniformColor(kSky, 255u);
+  //VerifyUniformColor(kTerrain, 255u);
 
   // Farther than kZFar.
   X_WC_.translation().z() = kZFar + 1e-3;
   renderer_->UpdateViewpoint(X_WC_);
   RenderColorImage();
-  VerifyUniformColor(kSky, 255u);
+  //VerifyUniformColor(kTerrain, 255u);
 }
 
+TEST_F(RgbdRendererGodotTest, HorizonTest) {
+  // Camera at the origin, pointing in a direction parallel to the ground.
+  Isometry3d X_WC =
+      Eigen::Translation3d(0, 0, 0) *
+      Eigen::AngleAxisd(-M_PI_2, Eigen::Vector3d::UnitX()) *
+      Eigen::AngleAxisd(M_PI_2, Eigen::Vector3d::UnitY());
+  Init(X_WC, true);
+
+  // Returns y in [0, kHeight / 2], index of horizon location in image
+  // coordinate system under two assumptions: 1) the gound plane is not clipped
+  // by `kClippingPlaneFar`, 2) camera is located above the ground.
+  auto CalcHorizon = [](double z, double fov, double height) {
+    const double kTerrainSize = 50.;
+    const double kFocalLength = height * 0.5 / std::tan(0.5 * fov);
+    return 0.5 * height + z / kTerrainSize * kFocalLength;
+  };
+
+  // Verifies v index of horizon at three different camera heights.
+  for (double z : {2., 1., 0.5}) {
+    X_WC.translation().z() = z;
+    renderer_->UpdateViewpoint(X_WC);
+    RenderColorImage();
+
+    const auto& kTerrain = renderer_->color_palette().get_terrain_color();
+    int actual_horizon{0};
+    for (int y = 0; y < kHeight; ++y) {
+      // Looking for the boundary between the sky and the ground.
+      if ((static_cast<uint8_t>(kTerrain.r == color_.at(0, y)[0])) &&
+          (static_cast<uint8_t>(kTerrain.g == color_.at(0, y)[1])) &&
+          (static_cast<uint8_t>(kTerrain.b == color_.at(0, y)[2]))) {
+        actual_horizon = y;
+        break;
+      }
+    }
+
+    const double expected_horizon = CalcHorizon(z, kFovY, kHeight);
+    ASSERT_NEAR(expected_horizon, actual_horizon, 1.001);
+  }
+}
 //godotvis::GodotRenderer renderer(1280, 960);
 
 //GTEST_TEST(GodotRendererTest, Initialize) {
