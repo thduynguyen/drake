@@ -365,30 +365,119 @@ TEST_F(RgbdRendererGodotTest, HorizonTest) {
     ASSERT_NEAR(expected_horizon, actual_horizon, 1.001);
   }
 }
-//godotvis::GodotRenderer renderer(1280, 960);
 
-//GTEST_TEST(GodotRendererTest, Initialize) {
-  //renderer.Initialize();
-  //godotvis::GodotScene scene;
-  //scene.Initialize();
-  //scene.AddCamera(65.0, 0.1, 100.0);
-  //scene.set_viewport_size(320, 240);
-  //renderer.Draw();
-  //scene.Finish();
-//}
+TEST_F(RgbdRendererGodotTest, BoxTest) {
+  Init(X_WC_, true);
 
-//GTEST_TEST(GodotRendererTest, Initialize2) {
-  ////godotvis::GodotRenderer renderer(1280, 960);
-  ////renderer.InitGLContext();
-  ////renderer.InitGraphics();
-  //godotvis::GodotScene scene;
-  //scene.Initialize();
-  //scene.AddCamera(65.0, 0.1, 100.0);
-  //scene.set_viewport_size(160, 120);
-  //renderer.Draw();
-  //scene.Finish();
-  //renderer.CleanUp();
-//}
+  // Sets up a box.
+  Isometry3d X_WV = Isometry3d::Identity();
+  X_WV.translation().z() = 0.5;
+  DrakeShapes::VisualElement visual(X_WV);
+  Eigen::Vector3d box_size(1, 1, 1);
+  visual.setGeometry(DrakeShapes::Box(box_size));
+  const int kBodyID = 0;
+  const RgbdRenderer::VisualIndex kVisualID(0);
+  renderer_->RegisterVisual(visual, kBodyID);
+  renderer_->UpdateVisualPose(X_WV, kBodyID, kVisualID);
+  RenderColorImage();
+
+  VerifyOutliers(true);
+
+  // Verifies inside the box.
+  const int x = kInlier.x;
+  const int y = kInlier.y;
+  // Color
+  CompareColor(color_.at(x, y), kDefaultVisualColor, 255u,
+               kColorPixelTolerance);
+  // Depth
+  //ASSERT_NEAR(depth_.at(x, y)[0], 2.f, kDepthTolerance);
+  // Label
+  //ASSERT_EQ(label_.at(x, y)[0], kBodyID);
+}
+
+TEST_F(RgbdRendererGodotTest, SphereTest) {
+  Init(X_WC_, true);
+
+  // Sets up a sphere.
+  Isometry3d X_WV = Isometry3d::Identity();
+  X_WV.translation().z() = 0.5;
+  DrakeShapes::VisualElement visual(X_WV);
+  visual.setGeometry(DrakeShapes::Sphere(0.5));
+  const int kBodyID = 0;
+  const RgbdRenderer::VisualIndex kVisualID(0);
+  renderer_->RegisterVisual(visual, kBodyID);
+  renderer_->UpdateVisualPose(X_WV, kBodyID, kVisualID);
+  RenderColorImage();
+
+  VerifyOutliers(true);
+
+  // Verifies inside the sphere.
+  const int x = kInlier.x;
+  const int y = kInlier.y;
+  // Color
+  CompareColor(color_.at(x, y), kDefaultVisualColor, 255u,
+               kColorPixelTolerance);
+  // Depth
+  //ASSERT_NEAR(depth_.at(x, y)[0], 2.f, kDepthTolerance);
+  // Label
+  //ASSERT_EQ(label_.at(x, y)[0], kBodyID);
+}
+
+TEST_F(RgbdRendererGodotTest, CylinderTest) {
+  Init(X_WC_, true);
+
+  // Sets up a sphere.
+  Isometry3d X_WV = Isometry3d::Identity();
+  X_WV.translation().z() = 0.6;
+  DrakeShapes::VisualElement visual(X_WV);
+  visual.setGeometry(DrakeShapes::Cylinder(0.2, 1.2));  // Radius and length.
+  const int kBodyID = 1;
+  const RgbdRenderer::VisualIndex kVisualID(0);
+  renderer_->RegisterVisual(visual, kBodyID);
+  renderer_->UpdateVisualPose(X_WV, kBodyID, kVisualID);
+  RenderColorImage();
+
+  VerifyOutliers(true);
+
+  // Verifies inside the cylinder.
+  const int x = kInlier.x;
+  const int y = kInlier.y;
+  // Color
+  CompareColor(color_.at(x, y), kDefaultVisualColor, 255u,
+               kColorPixelTolerance);
+  // Depth
+  //ASSERT_NEAR(depth_.at(x, y)[0], 1.8f, kDepthTolerance);
+  // Label
+  //ASSERT_EQ(label_.at(x, y)[0], kBodyID);
+}
+
+TEST_F(RgbdRendererGodotTest, DISABLED_MeshTest) {
+  Init(X_WC_, true);
+
+  Isometry3d X_WV = Isometry3d::Identity();
+  DrakeShapes::VisualElement visual(X_WV);
+  auto filename =
+      FindResourceOrThrow("drake/systems/sensors/test/models/meshes/box.obj");
+  visual.setGeometry(DrakeShapes::Mesh("", filename));
+  const int kBodyID = 0;
+  const RgbdRenderer::VisualIndex kVisualID(0);
+  renderer_->RegisterVisual(visual, kBodyID);
+  renderer_->UpdateVisualPose(X_WV, kBodyID, kVisualID);
+  RenderColorImage();
+
+  VerifyOutliers(true);
+
+  // Verifies inside the cylinder.
+  const int x = kInlier.x;
+  const int y = kInlier.y;
+  // Color
+  CompareColor(color_.at(x, y), ColorI({4u, 241u, 33u}), 255u,
+               kColorPixelTolerance);
+  // Depth
+  //ASSERT_NEAR(depth_.at(x, y)[0], 2., kDepthTolerance);
+  // Label
+  //ASSERT_EQ(label_.at(x, y)[0], kBodyID);
+}
 
 }  // namespace test
 }  // namespace sensors

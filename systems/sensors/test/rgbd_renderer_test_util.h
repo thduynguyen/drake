@@ -81,17 +81,20 @@ class RgbdRendererTest : public ::testing::Test {
   }
 
   // Verifies the chosen pixels, i.e. `kOutliers`, belong to the ground.
-  void VerifyOutliers() {
+  void VerifyOutliers(bool color_only = false) {
     const auto& kTerrain = renderer_->color_palette().get_terrain_color();
     for (const auto& screen_coord : kOutliers) {
       const int x = screen_coord.x;
       const int y = screen_coord.y;
       // Color
       CompareColor(color_.at(x, y), kTerrain, 255u, kColorPixelTolerance);
-      // Depth
-      ASSERT_NEAR(depth_.at(x, y)[0], kDefaultDistance, kDepthTolerance);
-      // Label
-      ASSERT_EQ(label_.at(x, y)[0], Label::kFlatTerrain);
+
+      if (!color_only) {
+        // Depth
+        ASSERT_NEAR(depth_.at(x, y)[0], kDefaultDistance, kDepthTolerance);
+        // Label
+        ASSERT_EQ(label_.at(x, y)[0], Label::kFlatTerrain);
+      }
     }
   }
 
