@@ -4,6 +4,7 @@
 #include <string>
 #include <tuple>
 #include <type_traits>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -17,6 +18,7 @@
 #include "drake/multibody/multibody_tree/frame.h"
 #include "drake/multibody/multibody_tree/joints/joint.h"
 #include "drake/multibody/multibody_tree/mobilizer.h"
+#include "drake/multibody/multibody_tree/multibody_forces.h"
 #include "drake/multibody/multibody_tree/multibody_tree_context.h"
 #include "drake/multibody/multibody_tree/multibody_tree_topology.h"
 #include "drake/multibody/multibody_tree/position_kinematics_cache.h"
@@ -157,6 +159,40 @@ class MultibodyTree {
     static_assert(std::is_convertible<BodyType<T>*, Body<T>*>::value,
                   "BodyType must be a sub-class of Body<T>.");
     return AddBody(std::make_unique<BodyType<T>>(std::forward<Args>(args)...));
+  }
+
+  /// Creates a rigid body model with the provided name and spatial inertia.
+  /// This method returns a constant reference to the body just added, which
+  /// will remain valid for the lifetime of `this` %MultibodyTree.
+  ///
+  /// Example of usage:
+  /// @code
+  ///   MultibodyTree<T> model;
+  ///   // ... Code to define spatial_inertia, a SpatialInertia<T> object ...
+  ///   const RigidBody<T>& body =
+  ///     model.AddRigidBody("BodyName", spatial_inertia);
+  /// @endcode
+  ///
+  /// @param[in] name
+  ///   A string that uniquely identifies the new body to be added to `this`
+  ///   model. A std::runtime_error is thrown if a body named `name` already is
+  ///   part of the model. See HasBodyNamed(), Body::get_name().
+  /// @param[in] M_BBo_B
+  ///   The SpatialInertia of the new rigid body to be added to `this` model,
+  ///   computed about the body frame origin `Bo` and expressed in the body
+  ///   frame B.
+  /// @returns A constant reference to the new RigidBody just added, which will
+  ///          remain valid for the lifetime of `this` %MultibodyTree.
+  const RigidBody<T>& AddRigidBody(
+      const std::string& name, const SpatialInertia<double>& M_BBo_B) {
+    if (HasBodyNamed(name)) {
+      throw std::logic_error(
+          "This model already contains a body named '" + name + "'. " +
+          "Body names must be unique within a given model.");
+    }
+    const RigidBody<T>& body = this->template AddBody<RigidBody>(name, M_BBo_B);
+    body_name_to_index_[name] = body.get_index();
+    return body;
   }
 
   /// Takes ownership of `frame` and adds it to `this` %MultibodyTree. Returns
@@ -452,6 +488,12 @@ class MultibodyTree {
   ///   braces `{}` imply that frame M **is** the same body frame B. If instead
   ///   your intention is to make a frame F with pose `X_PF`, provide
   ///   `Isometry3<double>::Identity()` as your input.
+  /// @tparam JointType
+  ///   The type of the new joint to add, which must be a subclass of Joint.
+  /// @returns A constant reference to the new joint just added, of type
+  ///   `JointType<T>` specialized on the scalar type T of `this`
+  ///   %MultibodyTree. It will remain valid for the lifetime of `this`
+  ///   %MultibodyTree.
   ///
   /// Example of usage:
   /// @code
@@ -472,6 +514,9 @@ class MultibodyTree {
   ///       Vector3d::UnitZ());     /* revolute axis in this case */
   /// @endcode
   ///
+  /// @throws if `this` model already contains a joint with the given `name`.
+  /// See HasJointNamed(), Joint::get_name().
+  ///
   /// @see The Joint class's documentation for further details on how a Joint
   /// is defined.
   template<template<typename> class JointType, typename... Args>
@@ -482,6 +527,11 @@ class MultibodyTree {
       Args&&... args) {
     static_assert(std::is_base_of<Joint<T>, JointType<T>>::value,
                   "JointType<T> must be a sub-class of Joint<T>.");
+    if (HasJointNamed(name)) {
+      throw std::logic_error(
+          "This model already contains a joint named '" + name + "'. " +
+          "Joint names must be unique within a given model.");
+    }
 
     const Frame<T>* frame_on_parent;
     if (X_PF) {
@@ -497,11 +547,13 @@ class MultibodyTree {
       frame_on_child = &child.get_body_frame();
     }
 
-    return AddJoint(
+    const JointType<T>& joint = AddJoint(
         std::make_unique<JointType<T>>(
             name,
             *frame_on_parent, *frame_on_child,
             std::forward<Args>(args)...));
+    joint_name_to_index_[name] = joint.get_index();
+    return joint;
   }
   /// @}
   // Closes Doxygen section.
@@ -576,29 +628,121 @@ class MultibodyTree {
   }
 
   /// Returns a constant reference to the body with unique index `body_index`.
-  /// This method aborts in Debug builds when `body_index` does not correspond
-  /// to a body in this multibody tree.
+  /// @throws std::runtime_error when `body_index` does not correspond to a body
+  /// in this multibody tree.
   const Body<T>& get_body(BodyIndex body_index) const {
-    DRAKE_ASSERT(body_index < get_num_bodies());
+    DRAKE_THROW_UNLESS(body_index < get_num_bodies());
     return *owned_bodies_[body_index];
   }
 
+  /// Returns a constant reference to the joint with unique index `joint_index`.
+  /// @throws std::runtime_error when `joint_index` does not correspond to a
+  /// joint in this multibody tree.
+  const Joint<T>& get_joint(JointIndex joint_index) const {
+    DRAKE_THROW_UNLESS(joint_index < get_num_joints());
+    return *owned_joints_[joint_index];
+  }
+
   /// Returns a constant reference to the frame with unique index `frame_index`.
-  /// This method aborts in Debug builds when `frame_index` does not correspond
-  /// to a frame in `this` multibody tree.
+  /// @throws std::runtime_error when `frame_index` does not correspond to a
+  /// frame in `this` multibody tree.
   const Frame<T>& get_frame(FrameIndex frame_index) const {
-    DRAKE_ASSERT(frame_index < get_num_frames());
+    DRAKE_THROW_UNLESS(frame_index < get_num_frames());
     return *frames_[frame_index];
   }
 
   /// Returns a constant reference to the mobilizer with unique index
-  /// `mobilizer_index`. This method aborts in Debug builds when
-  /// `mobilizer_index` does not correspond to a mobilizer in this multibody
-  /// tree.
+  /// `mobilizer_index`.
+  /// @throws std::runtime_error when `mobilizer_index` does not correspond to a
+  /// mobilizer in this multibody tree.
   const Mobilizer<T>& get_mobilizer(MobilizerIndex mobilizer_index) const {
-    DRAKE_ASSERT(mobilizer_index < get_num_mobilizers());
+    DRAKE_THROW_UNLESS(mobilizer_index < get_num_mobilizers());
     return *owned_mobilizers_[mobilizer_index];
   }
+
+  /// @name Querying for multibody elements by name
+  /// These methods allow a user to query whether a given multibody element is
+  /// part of `this` model. These queries can be performed at any time during
+  /// the lifetime of a %MultibodyTree model, i.e. there is no restriction on
+  /// whether they must be called before or after Finalize(). That is, these
+  /// queries can be performed while new multibody elements are being added to
+  /// the model.
+  /// @{
+
+  /// @returns `true` if a body named `name` was added to the model.
+  /// @see AddRigidBody().
+  bool HasBodyNamed(const std::string& name) const {
+    return body_name_to_index_.find(name) != body_name_to_index_.end();
+  }
+
+  /// @returns `true` if a joint named `name` was added to the model.
+  /// @see AddJoint().
+  bool HasJointNamed(const std::string& name) const {
+    return joint_name_to_index_.find(name) != joint_name_to_index_.end();
+  }
+  /// @}
+
+  /// @name Retrieving multibody elements by name
+  /// These methods allow a user to retrieve a reference to a multibody element
+  /// by its name. A std::logic_error is thrown if there is no element with the
+  /// requested name.
+  /// These queries can be performed at any time during the lifetime of a
+  /// %MultibodyTree model, i.e. there is no restriction on whether they must
+  /// be called before or after Finalize(). This implies that these queries can
+  /// be performed while new multibody elements are being added to the model.
+  /// @{
+
+  /// Returns a constant reference to the body that is uniquely identified
+  /// by the string `name` in `this` model.
+  /// @throws std::logic_error if there is no body with the requested name.
+  /// @see HasBodyNamed() to query if there exists a body in `this` model with a
+  /// given specified name.
+  const Body<T>& GetBodyByName(const std::string& name) const {
+    auto it = body_name_to_index_.find(name);
+    if (it == body_name_to_index_.end()) {
+      throw std::logic_error("There is no body named '" + name +
+          "' in the model.");
+    }
+    return get_body(it->second);
+  }
+
+  /// Returns a constant reference to the joint that is uniquely identified
+  /// by the string `name` in `this` model.
+  /// @throws std::logic_error if there is no joint with the requested name.
+  /// @see HasJointNamed() to query if there exists a joint in `this` model with
+  /// a given specified name.
+  const Joint<T>& GetJointByName(const std::string& name) const {
+    auto it = joint_name_to_index_.find(name);
+    if (it == joint_name_to_index_.end()) {
+      throw std::logic_error("There is no joint named '" + name +
+          "' in the model.");
+    }
+    return get_joint(it->second);
+  }
+
+  /// A templated version of GetJointByName() to return a constant reference of
+  /// the specified type `JointType` in place of the base Joint class. See
+  /// GetJointByName() for details.
+  /// @tparam JointType The specific type of the Joint to be retrieved. It must
+  /// be a subclass of Joint.
+  /// @throws std::logic_error if the named joint is not of type `JointType` or
+  /// if there is no Joint with that name.
+  /// @see HasJointNamed() to query if there exists a joint in `this` model with
+  /// a given specified name.
+  template <template<typename> class JointType>
+  const JointType<T>& GetJointByName(const std::string& name) const {
+    static_assert(std::is_base_of<Joint<T>, JointType<T>>::value,
+                  "JointType<T> must be a sub-class of Joint<T>.");
+    const JointType<T>* joint =
+        dynamic_cast<const JointType<T>*>(&GetJointByName(name));
+    if (joint == nullptr) {
+      throw std::logic_error("Joint '" + name + "' is not of type '" +
+          NiceTypeName::Get<JointType<T>>() + "' but of type '" +
+          NiceTypeName::Get(GetJointByName(name)) + "'.");
+    }
+    return *joint;
+  }
+  /// @}
 
   /// Returns `true` if this %MultibodyTree was finalized with Finalize() after
   /// all multibody elements were added, and `false` otherwise.
@@ -882,7 +1026,7 @@ class MultibodyTree {
       EigenPtr<VectorX<T>> tau_array) const;
 
   /// Computes the combined force contribution of ForceElement objects in the
-  /// model. A ForceElement can apply forcing as a spatial force per body or as
+  /// model. A ForceElement can apply forces as a spatial force per body or as
   /// generalized forces, depending on the ForceElement model. Therefore this
   /// method provides outputs for both spatial forces per body (with
   /// `F_Bo_W_array`) and generalized forces (with `tau_array`).
@@ -899,23 +1043,12 @@ class MultibodyTree {
   /// @param[in] vc
   ///   A velocity kinematics cache object already updated to be in sync with
   ///   `context`.
-  /// @param[out] F_Bo_W_array
-  ///   A pointer to a valid, non nullptr, vector of spatial forces
-  ///   containing, for each body B, the total spatial force `F_Bo_W` applied at
-  ///   Bo by the force elements in `this` model, expressed in the world frame
-  ///   W. It must be of size equal to the number of bodies in the
-  ///   MultibodyTree. This method will abort if the the pointer is null or if
-  ///   `F_Bo_W_array` is not of size `get_num_bodies()`.
-  ///   On output, entries will be ordered by BodyNodeIndex.
-  ///   To access a mobilizer's reaction force on given body B in this array,
-  ///   use the index returned by Body::get_node_index().
-  /// @param[out] tau_array
-  ///   On output this array will contain the generalized forces contribution
-  ///   applied by the force elements in `this` model. It must not be nullptr
-  ///   and it must be of size MultibodyTree::get_num_velocities() or this
-  ///   method will abort.
-  ///   Generalized forces for each Mobilizer can be accessed with
-  ///   Mobilizer::get_generalized_forces_from_array().
+  /// @param[out] forces
+  ///   A pointer to a valid, non nullptr, multibody forces object. On output
+  ///   `forces` will store the forces exerted by all the ForceElement
+  ///   objects in the model. This method will abort if the `forces` pointer is
+  ///   null or if the forces object is not compatible with `this`
+  ///   %MultibodyTree, see MultibodyForces::CheckInvariants().
   ///
   /// @pre The position kinematics `pc` must have been previously updated with a
   /// call to CalcPositionKinematicsCache().
@@ -925,8 +1058,7 @@ class MultibodyTree {
       const systems::Context<T>& context,
       const PositionKinematicsCache<T>& pc,
       const VelocityKinematicsCache<T>& vc,
-      std::vector<SpatialForce<T>>* F_Bo_W_array,
-      EigenPtr<VectorX<T>> tau_array) const;
+      MultibodyForces<T>* forces) const;
 
   /// Computes and returns the total potential energy stored in `this` multibody
   /// model for the configuration given by `context`.
@@ -1327,6 +1459,9 @@ class MultibodyTree {
     // We can safely make a deep copy here since the original multibody tree is
     // required to be finalized.
     tree_clone->topology_ = this->topology_;
+    tree_clone->body_name_to_index_ = this->body_name_to_index_;
+    tree_clone->joint_name_to_index_ = this->joint_name_to_index_;
+
     // All other internals templated on T are created with the following call to
     // FinalizeInternals().
     tree_clone->FinalizeInternals();
@@ -1576,9 +1711,21 @@ class MultibodyTree {
     return *joint_variant;
   }
 
+  // Helper method to Eval() position kinematics cached in the context.
+  const PositionKinematicsCache<T>& EvalPositionKinematics(
+      const systems::Context<T>& context) const;
+
+  // Helper method to Eval() velocity kinematics cached in the context.
+  const VelocityKinematicsCache<T>& EvalVelocityKinematics(
+      const systems::Context<T>& context) const;
+
+  // Helper method to allocate fake cache entries.
+  // TODO(amcastro-tri): Remove when MultibodyCachingEvaluatorInterface lands.
+  void AllocateFakeCacheEntries();
+
   // TODO(amcastro-tri): In future PR's adding MBT computational methods, write
   // a method that verifies the state of the topology with a signature similar
-  // to RoadGeometry::CheckInvariants().
+  // to RoadGeometry::CheckHasRightSizeForModel().
 
   const RigidBody<T>* world_body_{nullptr};
   std::vector<std::unique_ptr<Body<T>>> owned_bodies_;
@@ -1594,12 +1741,26 @@ class MultibodyTree {
   // pointer to each BodyFrame, which are owned by their corresponding Body.
   std::vector<const Frame<T>*> frames_;
 
+  // TODO(amcastro-tri): Consider moving these maps into MultibodyTreeTopology
+  // since they are not templated on <T>.
+
+  // Map used to find body indexes by their unique body name.
+  std::unordered_map<std::string, BodyIndex> body_name_to_index_;
+
+  // Map used to find joint indexes by their joint name.
+  std::unordered_map<std::string, JointIndex> joint_name_to_index_;
+
   // Body node indexes ordered by level (a.k.a depth). Therefore for the
   // i-th level body_node_levels_[i] contains the list of all body node indexes
   // in that level.
   std::vector<std::vector<BodyNodeIndex>> body_node_levels_;
 
   MultibodyTreeTopology topology_;
+
+  // Temporary solution for fake cache entries to help statbilize the API.
+  // TODO(amcastro-tri): Remove when MultibodyCachingEvaluatorInterface lands.
+  std::unique_ptr<PositionKinematicsCache<T>> pc_;
+  std::unique_ptr<VelocityKinematicsCache<T>> vc_;
 };
 
 }  // namespace multibody

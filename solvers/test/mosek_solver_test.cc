@@ -23,6 +23,24 @@ INSTANTIATE_TEST_CASE_P(
                        ::testing::ValuesIn(linear_constraint_form()),
                        ::testing::ValuesIn(linear_problems())));
 
+TEST_F(UnboundedLinearProgramTest0, Test) {
+  MosekSolver solver;
+  if (solver.available()) {
+    const SolutionResult result = solver.Solve(*prog_);
+    // Mosek can only detect dual infeasibility, not primal unboundedness.
+    EXPECT_EQ(result, SolutionResult::kDualInfeasible);
+  }
+}
+
+TEST_F(UnboundedLinearProgramTest1, Test) {
+  MosekSolver solver;
+  if (solver.available()) {
+    const SolutionResult result = solver.Solve(*prog_);
+    // Mosek can only detect dual infeasibility, not primal unboundedness.
+    EXPECT_EQ(result, SolutionResult::kDualInfeasible);
+  }
+}
+
 TEST_P(QuadraticProgramTest, TestQP) {
   MosekSolver solver;
   prob()->RunProblem(&solver);
@@ -75,28 +93,28 @@ INSTANTIATE_TEST_CASE_P(
 GTEST_TEST(TestSemidefiniteProgram, TrivialSDP) {
   MosekSolver mosek_solver;
   if (mosek_solver.available()) {
-    TestTrivialSDP(mosek_solver);
+    TestTrivialSDP(mosek_solver, 1E-8);
   }
 }
 
 GTEST_TEST(TestSemidefiniteProgram, CommonLyapunov) {
   MosekSolver mosek_solver;
   if (mosek_solver.available()) {
-    FindCommonLyapunov(mosek_solver);
+    FindCommonLyapunov(mosek_solver, 1E-8);
   }
 }
 
 GTEST_TEST(TestSemidefiniteProgram, OuterEllipsoid) {
   MosekSolver mosek_solver;
   if (mosek_solver.available()) {
-    FindOuterEllipsoid(mosek_solver);
+    FindOuterEllipsoid(mosek_solver, 1E-6);
   }
 }
 
 GTEST_TEST(TestSemidefiniteProgram, EigenvalueProblem) {
   MosekSolver mosek_solver;
   if (mosek_solver.available()) {
-    SolveEigenvalueProblem(mosek_solver);
+    SolveEigenvalueProblem(mosek_solver, 1E-7);
   }
 }
 }  // namespace test
