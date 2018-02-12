@@ -225,6 +225,8 @@ optional<RgbdRenderer::VisualIndex> RgbdRendererGodot::Impl::RegisterVisual(
       //godot_id = scene_.AddMeshInstance(mesh_gltf);
       break;
     }
+    default:
+      break;
   }
 
   if (godot_id > 0) {
@@ -303,7 +305,7 @@ TEST_F(RgbdRendererGodotTest, TerrainTest) {
   RenderColorImage();
 
   const auto& kTerrain = renderer_->color_palette().get_terrain_color();
-  const auto& kSky = renderer_->color_palette().get_sky_color();
+  //const auto& kSky = renderer_->color_palette().get_sky_color();
 
   // At two different distances.
   for (float depth : {2.f, 5.f}) {

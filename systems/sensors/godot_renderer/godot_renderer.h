@@ -43,7 +43,7 @@ class GodotRenderer {
   void MainLoop();
   void CleanUp();
 
-  GLFWwindow* const get_glfw_window() const { return window_; }
+  const GLFWwindow*  get_glfw_window() const { return window_; }
   int width() const { return window_width_; }
   int height() const { return window_height_; }
 

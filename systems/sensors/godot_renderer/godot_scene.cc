@@ -84,7 +84,7 @@ void GodotScene::ApplyMaterialShader() {
   for (const auto& [id, materials]: instance_materials_) {
     MeshInstance *instance =
         Object::cast_to<MeshInstance>(scene_root_->get_child(id));
-    for (int i = 0; i < materials.size(); ++i)
+    for (size_t i = 0; i < materials.size(); ++i)
       instance->set_surface_material(i, materials[i]);
   }
   SpatialMaterial::flush_changes();
@@ -110,7 +110,7 @@ int GodotScene::AddInstance(const MeshMaterialsPair& mesh_materials) {
   instance->set_notify_transform(true);
   int id = instance->get_position_in_parent();
   instance_materials_[id] = mesh_materials.materials;
-  for (int i = 0; i < mesh_materials.materials.size(); ++i)
+  for (size_t i = 0; i < mesh_materials.materials.size(); ++i)
     instance->set_surface_material(i, mesh_materials.materials[i]);
   return id;
 }
