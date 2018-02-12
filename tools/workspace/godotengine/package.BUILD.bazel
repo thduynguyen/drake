@@ -130,11 +130,13 @@ cc_library(
     copts = [
         "-Wno-c++11-narrowing",
         "-w",
+        "-I/usr/include/freetype2"
     ],
     defines = [
         "GLAD_ENABLED",
         "GLES_OVER_GL",
         "UNIX_ENABLED",
+        "FREETYPE_ENABLED",
         "ZSTD_STATIC_LINKING_ONLY",
     ],
     includes = [
@@ -149,11 +151,12 @@ cc_library(
         "drivers/gles3",
         "platform/x11",
         "thirdparty/glad",
+        #"thirdparty/freetype/include",
         "thirdparty/zstd",
         "thirdparty/zstd/common",
     ],
     linkopts = select({
-        "@drake//tools/cc_toolchain:linux": ["-ldl"],
+        "@drake//tools/cc_toolchain:linux": ["-ldl", "-lfreetype"],
         "//conditions:default": [],
     }),
     textual_hdrs = glob([
