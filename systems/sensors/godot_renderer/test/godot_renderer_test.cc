@@ -12,6 +12,7 @@
 using namespace godotvis;
 
 std::string path = "/home/duynguyen/git/godot-demo-projects/3d/material_testers/";
+std::string save_path = "/home/sean/Downloads/godot/";
 
 int main(int argc, char *argv[]) {
   GodotRenderer renderer(640, 480);
@@ -20,6 +21,7 @@ int main(int argc, char *argv[]) {
   scene.Initialize();
   scene.SetupEnvironment(path + "night.hdr");
   scene.AddCamera(65.0, 0.1, 100.0);
+  scene.ImportGltf("/home/sean/models/glTF-Sample-Models/2.0/DamagedHelmet/glTF/DamagedHelmet.gltf");
 
   Eigen::Isometry3d camera_pose{Eigen::Isometry3d::Identity()};
   camera_pose.translation() = Eigen::Vector3d(0., 0., 15.);
@@ -66,37 +68,37 @@ int main(int argc, char *argv[]) {
   Ref<Image> image = scene.Capture();
   std::cout << "Image format: " << image->get_format() << std::endl;
   std::cout << "Expected format: " << Image::FORMAT_RGBA8 << std::endl;
-  image->save_png("/home/duynguyen/Downloads/rgb1.png");
+  image->save_png((save_path + "rgb1.png").c_str());
 
   scene.ApplyDepthShader();
   renderer.Draw();
   image = scene.Capture();
   std::cout << "Depth Image format: " << image->get_format() << std::endl;
   std::cout << "Depth Expected format: " << Image::FORMAT_RGBA8 << std::endl;
-  image->save_png("/home/duynguyen/Downloads/depth1.png");
+  image->save_png((save_path + "depth1.png").c_str());
 
   scene.set_viewport_size(320, 240);
   scene.SetInstanceColor(cube_id, 1., 1., 1.);
   scene.ApplyMaterialShader();
   renderer.Draw();
   image = scene.Capture();
-  image->save_png("/home/duynguyen/Downloads/rgb2.png");
+  image->save_png((save_path + "rgb2.png").c_str());
 
   scene.ApplyDepthShader();
   renderer.Draw();
   image = scene.Capture();
-  image->save_png("/home/duynguyen/Downloads/depth2.png");
+  image->save_png((save_path + "depth2.png").c_str());
 
   scene.set_viewport_size(640, 480);
   scene.SetInstanceColor(cylinder_id, 1., 1., 1.);
   scene.SetInstanceColor(cube_id, 1., 0., 0.);
   scene.ApplyMaterialShader();
   renderer.Draw();
-  scene.Capture()->save_png("/home/duynguyen/Downloads/rgb3.png");
+  scene.Capture()->save_png((save_path + "rgb3.png").c_str());
 
   scene.ApplyDepthShader();
   renderer.Draw();
-  scene.Capture()->save_png("/home/duynguyen/Downloads/depth3.png");
+  scene.Capture()->save_png((save_path + "depth3.png").c_str());
 
   scene.Finish();
   image.unref();

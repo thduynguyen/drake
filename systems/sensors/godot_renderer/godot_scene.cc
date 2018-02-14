@@ -1,7 +1,10 @@
 #include "drake/systems/sensors/godot_renderer/godot_scene.h"
-#include "servers/visual/visual_server_global.h"
-#include <stdexcept>
+
 #include <iostream>
+#include <stdexcept>
+
+#include <editor/import/editor_scene_importer_gltf.h>
+#include <servers/visual/visual_server_global.h>
 
 namespace godotvis {
 
@@ -52,6 +55,26 @@ void GodotScene::SetupEnvironment(const std::string &env_filename) {
 void GodotScene::SetBackgroundColor(float r, float g, float b) {
   //TODO(duy): alpha doesn't work!!! Godot switches it to 1.0 somewhere?
   env->set_bg_color(Color{r, g, b, 1.0f});
+}
+
+void GodotScene::ImportGltf(const std::string& file_name) {
+  EditorSceneImporterGLTF importer;
+  // The importer interface has many arguments that we don't require:
+  // flags: `p_flags` (unused by gltf parsing) and `p_bake_fps` (we don't
+  //   support animation.
+  // The error handling (list of missing dependencies and error code is *not*
+  // currently implemented in the gltf parsing.
+  List<String> missing_dependencies;
+  Error error{OK};
+  Node* node = importer.import_scene(file_name.c_str(), 0, 0,
+                                     &missing_dependencies, &error);
+  if (node) {
+    scene_root_->add_child(node);
+  } else {
+    // TODO(SeanCurtis-TRI): Make use of the error message when the importer
+    // likewise makes use of it.
+    throw std::runtime_error("Unable to load the file: " + file_name);
+  }
 }
 
 /// Add a camera to the scene. Only support one camera for now.
