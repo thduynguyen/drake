@@ -15,7 +15,7 @@ namespace godotvis {
 
 class GodotScene {
   SceneTree* tree_ = NULL;
-  Spatial* scene_root_ = NULL; //!< This will be freed by scene tree. Keep the pointer to add intances.
+  Spatial* scene_root_ = NULL; //!< This will be freed by scene tree. Keep the pointer to add instances.
   Camera* camera_ = NULL; //!< This will be freed by scene tree. Keep the pointer to update.
   Environment* env = NULL;
   MeshInstance* mesh_instance_ = NULL;
