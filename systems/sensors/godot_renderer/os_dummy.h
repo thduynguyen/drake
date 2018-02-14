@@ -18,7 +18,7 @@ public:
     return VideoMode(window_width, window_height, false);
   }
 
-  virtual void initialize(const VideoMode &p_desired, int p_video_driver, int p_audio_driver) {}
+  virtual Error initialize(const VideoMode &p_desired, int p_video_driver, int p_audio_driver) { return OK; }
   virtual void set_main_loop(MainLoop *p_main_loop) {}
   virtual void finalize() {}
 
@@ -36,7 +36,7 @@ public:
   virtual Size2 get_window_size() const { return Size2(window_width, window_height); }
   virtual MainLoop *get_main_loop() const { return NULL; }
   virtual bool can_draw() const { return true; }
-
+  virtual void set_custom_mouse_cursor(const RES &p_cursor, CursorShape p_shape, const Vector2 &p_hotspot) {}
   //====== from OS
   virtual void set_cursor_shape(CursorShape p_shape) {}
   virtual int get_audio_driver_count() const { return 0; }
