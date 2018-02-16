@@ -12,16 +12,35 @@
 using namespace godotvis;
 
 std::string path = "/home/duynguyen/git/godot-demo-projects/3d/material_testers/";
-std::string save_path = "/home/sean/Downloads/godot/";
+std::string gltf_path = "/home/duynguyen/git/glTF-Sample-Models/2.0/DamagedHelmet/glTF/DamagedHelmet.gltf";
+std::string save_path = "/home/duynguyen/Downloads/godot/";
 
-int main(int argc, char *argv[]) {
+void test_GLTF() {
+  GodotRenderer renderer(1280, 960);
+  GodotScene scene;
+  scene.Initialize();
+  scene.SetupEnvironment(path + "lobby.hdr");
+  scene.AddCamera(65.0, 0.1, 100.0);
+  Eigen::Isometry3d camera_pose{Eigen::Isometry3d::Identity()};
+  camera_pose.translation() = Eigen::Vector3d(0., 0., 3.);
+  scene.SetCameraPose(camera_pose);
+  scene.ImportGltf(gltf_path);
+  scene.FlushTransformNotifications();
+  scene.set_viewport_size(1280, 960);
+  renderer.Draw();
+  Ref<Image> image = scene.Capture();
+  image->save_png((save_path + "gltf.png").c_str());
+  scene.Finish();
+  image.unref();
+}
+
+void test_primitives() {
   GodotRenderer renderer(640, 480);
 
   GodotScene scene;
   scene.Initialize();
   scene.SetupEnvironment(path + "night.hdr");
   scene.AddCamera(65.0, 0.1, 100.0);
-  scene.ImportGltf("/home/sean/models/glTF-Sample-Models/2.0/DamagedHelmet/glTF/DamagedHelmet.gltf");
 
   Eigen::Isometry3d camera_pose{Eigen::Isometry3d::Identity()};
   camera_pose.translation() = Eigen::Vector3d(0., 0., 15.);
@@ -32,13 +51,13 @@ int main(int argc, char *argv[]) {
   //scene.SetInstancePose(id, pose);
   //scene.SetInstanceScale(id, 0.8, 0.8, 0.8);
 
-  Transform godot_T = ConvertToGodotTransform(pose);
-  Transform expected_T{Basis{1., 0., 0., 0., 1., 0., 0., 0., 1.},
-                       Vector3{0., 2.5, 15.0}};
-  if (godot_T != expected_T)
-    std::cout << "FAIL!" << std::endl;
-  else
-    std::cout << "Pass!" << std::endl;
+  //Transform godot_T = ConvertToGodotTransform(pose);
+  //Transform expected_T{Basis{1., 0., 0., 0., 1., 0., 0., 0., 1.},
+                       //Vector3{0., 2.5, 15.0}};
+  //if (godot_T != expected_T)
+    //std::cout << "FAIL!" << std::endl;
+  //else
+    //std::cout << "Pass!" << std::endl;
 
   int cube_id = scene.AddCubeInstance(1., 1., 1.);
 
@@ -102,6 +121,9 @@ int main(int argc, char *argv[]) {
 
   scene.Finish();
   image.unref();
+}
 
+int main(int argc, char *argv[]) {
+  test_GLTF();
   return 0; //os_.get_exit_code();
 }

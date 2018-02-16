@@ -29,19 +29,19 @@ void GodotScene::Initialize() {
 
 void GodotScene::SetupEnvironment(const std::string &env_filename) {
   // Load skybox resource
-  //String skyfilename{env_filename.c_str()};
-  //Ref<Texture> sky_texture = ResourceLoader::load(skyfilename);
+  String skyfilename{env_filename.c_str()};
+  Ref<Texture> sky_texture = ResourceLoader::load(skyfilename);
   // TODO: This will be freed by Environment. Also, what's the correct way to
   // create a Ref<Sky>?
-  //PanoramaSky *sky = memnew(PanoramaSky);
-  //sky->set_panorama(sky_texture);
-  //sky->set_radiance_size(Sky::RADIANCE_SIZE_64);
+  PanoramaSky *sky = memnew(PanoramaSky);
+  sky->set_panorama(sky_texture);
+  sky->set_radiance_size(Sky::RADIANCE_SIZE_64);
 
   //// Set Environment
   env = memnew(Environment);
-  env->set_background(Environment::BG_COLOR);
-  //env->set_sky(sky);
-  env->set_bg_energy(1.0);
+  env->set_background(Environment::BG_SKY);
+  env->set_sky(sky);
+  env->set_bg_energy(5.0);
   tree_->get_root()->get_world()->set_environment(env);
   // Add lights
   Light *light = memnew(OmniLight());
@@ -75,6 +75,7 @@ void GodotScene::ImportGltf(const std::string& file_name) {
     // likewise makes use of it.
     throw std::runtime_error("Unable to load the file: " + file_name);
   }
+  SpatialMaterial::flush_changes();
 }
 
 /// Add a camera to the scene. Only support one camera for now.
@@ -111,7 +112,7 @@ void GodotScene::ApplyMaterialShader() {
       instance->set_surface_material(i, materials[i]);
   }
   SpatialMaterial::flush_changes();
-  env->set_background(Environment::BG_COLOR);
+  env->set_background(Environment::BG_SKY);
 }
 
 void GodotScene::Finish() {
