@@ -6,6 +6,12 @@
 #include <editor/import/editor_scene_importer_gltf.h>
 #include <servers/visual/visual_server_global.h>
 
+#include <editor/editor_node.h>
+
+// stuff-out Ggodot functions that we dont link
+void EditorNode::progress_add_task(const String &p_task, const String &p_label, int p_steps, bool p_can_cancel ) {}
+void EditorNode::progress_end_task(const String &p_task) {}
+
 namespace godotvis {
 
 void GodotScene::Initialize() {
