@@ -579,3 +579,15 @@ class TestGeometry(unittest.TestCase):
         Value[mut.QueryObject_[T]]
         Value[mut.Rgba]
         Value[mut.render.RenderLabel]
+
+    def test_render_camera_api(self):
+        ...
+
+    def test_render_engine_api(self):
+
+        class DummyRenderEngine(mut.RenderEngine):
+            """Mirror of C++ DummyRenderEngine."""
+            def __init__(self):
+                mut.RenderEngine.__init__(self)
+                self._color_camera =
+
