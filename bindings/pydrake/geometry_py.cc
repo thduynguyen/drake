@@ -37,15 +37,22 @@ using Eigen::Vector3d;
 using geometry::GeometryId;
 using geometry::PerceptionProperties;
 using geometry::Shape;
+using geometry::render::CameraProperties;
 using geometry::render::ColorRenderCamera;
+using geometry::render::DepthCameraProperties;
 using geometry::render::DepthRenderCamera;
 using geometry::render::RenderEngine;
 using math::RigidTransformd;
 using systems::Context;
 using systems::LeafSystem;
+using systems::sensors::CameraInfo;
 using systems::sensors::ImageDepth32F;
 using systems::sensors::ImageLabel16I;
 using systems::sensors::ImageRgba8U;
+using systems::sensors::ColorI;
+using systems::sensors::ColorD;
+using systems::sensors::PixelType;
+using systems::sensors::Image;
 
 template <typename Class>
 void BindIdentifier(py::module m, const std::string& name, const char* id_doc) {
@@ -68,61 +75,67 @@ void BindIdentifier(py::module m, const std::string& name, const char* id_doc) {
 
 class PyRenderEngine : public py::wrapper<RenderEngine> {
  public:
-  typedef RenderEngine Base;
-  using Base::Base;
+  using Base = RenderEngine;
+  using WrappedBase = py::wrapper<Base>;
+  PyRenderEngine() : WrappedBase() {}
 
   void UpdateViewpoint(RigidTransformd const& X_WR) override {
     PYBIND11_OVERLOAD_PURE(void, Base, UpdateViewpoint, X_WR);
   }
 
-  bool DoRegisterVisual(GeometryId id,
-      Shape const& shape,
-      PerceptionProperties const& properties,
-      RigidTransformd const& X_WG) override {
-    PYBIND11_OVERLOAD_PURE(bool, Base, DoRegisterVisual, id,
-        shape, properties, X_WG);
+  void RenderColorImage(CameraProperties const& camera, bool show_window,
+      ImageRgba8U* color_image_out) const override {
+    PYBIND11_OVERLOAD_PURE(
+        void, Base, RenderColorImage, camera, show_window, color_image_out);
   }
 
-  void DoUpdateVisualPose(GeometryId id,
+  void RenderDepthImage(DepthCameraProperties const& camera,
+      ImageDepth32F* depth_image_out) const override {
+    PYBIND11_OVERLOAD_PURE(
+        void, Base, RenderDepthImage, camera, depth_image_out);
+  }
+
+  void RenderLabelImage(CameraProperties const& camera, bool show_window,
+      ImageLabel16I* label_image_out) const override {
+    PYBIND11_OVERLOAD_PURE(
+        void, Base, RenderLabelImage, camera, show_window, label_image_out);
+  }
+
+  bool DoRegisterVisual(GeometryId id, Shape const& shape,
+      PerceptionProperties const& properties,
       RigidTransformd const& X_WG) override {
     PYBIND11_OVERLOAD_PURE(
-        void, Base, DoUpdateVisualPose, id, X_WG);
+        bool, Base, DoRegisterVisual, id, shape, properties, X_WG);
+  }
+
+  void DoUpdateVisualPose(GeometryId id, RigidTransformd const& X_WG) override {
+    PYBIND11_OVERLOAD_PURE(void, Base, DoUpdateVisualPose, id, X_WG);
   }
 
   bool DoRemoveGeometry(GeometryId id) override {
     PYBIND11_OVERLOAD_PURE(bool, Base, DoRemoveGeometry, id);
   }
 
-  std::unique_ptr<RenderEngine>
-  DoClone() const override {
-    PYBIND11_OVERLOAD_PURE(
-        std::unique_ptr<RenderEngine>,
-        Base, DoClone);
+  std::unique_ptr<RenderEngine> DoClone() const override {
+    PYBIND11_OVERLOAD_PURE(std::unique_ptr<RenderEngine>, Base, DoClone);
   }
 
-  void DoRenderColorImage(
-      ColorRenderCamera const& camera,
+  void DoRenderColorImage(ColorRenderCamera const& camera,
       ImageRgba8U* color_image_out) const override {
-    PYBIND11_OVERLOAD(
-        void, Base, DoRenderColorImage, camera, color_image_out);
+    PYBIND11_OVERLOAD(void, Base, DoRenderColorImage, camera, color_image_out);
   }
 
-  void DoRenderDepthImage(
-      DepthRenderCamera const& camera,
+  void DoRenderDepthImage(DepthRenderCamera const& camera,
       ImageDepth32F* depth_image_out) const override {
-    PYBIND11_OVERLOAD(
-        void, Base, DoRenderDepthImage, camera, depth_image_out);
+    PYBIND11_OVERLOAD(void, Base, DoRenderDepthImage, camera, depth_image_out);
   }
 
-  void DoRenderLabelImage(
-      ColorRenderCamera const& camera,
+  void DoRenderLabelImage(ColorRenderCamera const& camera,
       ImageLabel16I* label_image_out) const override {
-    PYBIND11_OVERLOAD(
-        void, Base, DoRenderLabelImage, camera, label_image_out);
+    PYBIND11_OVERLOAD(void, Base, DoRenderLabelImage, camera, label_image_out);
   }
 
-  void SetDefaultLightPosition(
-      Vector3d const& X_DL) override {
+  void SetDefaultLightPosition(Vector3d const& X_DL) override {
     PYBIND11_OVERLOAD(void, Base, SetDefaultLightPosition, X_DL);
   }
 
@@ -154,86 +167,60 @@ void def_geometry_render(py::module m) {
   {
     using Class = ClippingRange;
     const auto& cls_doc = doc.ClippingRange;
-    py::class_<Class>(
-        m, "ClippingRange", cls_doc.doc)
+    py::class_<Class>(m, "ClippingRange", cls_doc.doc)
         .def(py::init<Class const&>(), cls_doc.ctor.doc_1args)
         .def(py::init<double, double>(), cls_doc.ctor.doc_2args)
-        .def("far",
-            static_cast<double (Class::*)()
-                    const>(&Class::far), cls_doc.far.doc)
-        .def("near",
-            static_cast<double (Class::*)()
-                    const>(&Class::near), cls_doc.near.doc);
+        .def("far", static_cast<double (Class::*)() const>(&Class::far),
+            cls_doc.far.doc)
+        .def("near", static_cast<double (Class::*)() const>(&Class::near),
+            cls_doc.near.doc);
   }
   {
     using Class = ColorRenderCamera;
-    py::class_<Class>(
-        m, "ColorRenderCamera", cls_doc.doc)
+    py::class_<Class>(m, "ColorRenderCamera", cls_doc.doc)
         .def(py::init<Class const&>())
         .def(py::init<RenderCameraCore, bool>())
-        .def("core",
-            static_cast<RenderCameraCore const& (
-                Class::*)() const>(
-                &Class::core))
+        .def("core", static_cast<RenderCameraCore const& (Class::*)() const>(
+                         &Class::core))
         .def("show_window",
-            static_cast<bool (Class::*)()
-                    const>(
-                &Class::show_window));
+            static_cast<bool (Class::*)() const>(&Class::show_window));
   }
   {
     using Class = DepthRange;
-    py::class_<Class>(
-        m, "DepthRange")
+    py::class_<Class>(m, "DepthRange")
         .def(py::init<Class const&>())
         .def(py::init<double, double>())
         .def("max_depth",
-            static_cast<double (Class::*)()
-                    const>(&Class::max_depth))
+            static_cast<double (Class::*)() const>(&Class::max_depth))
         .def("min_depth",
-            static_cast<double (Class::*)()
-                    const>(&Class::min_depth));
+            static_cast<double (Class::*)() const>(&Class::min_depth));
   }
   {
     using Class = DepthRenderCamera;
-    py::class_<Class>(
-        m, "DepthRenderCamera")
+    py::class_<Class>(m, "DepthRenderCamera")
         .def(py::init<Class const&>())
-        .def(py::init<RenderCameraCore,
-            DepthRange>())
-        .def("core",
-            static_cast<RenderCameraCore const& (
-                Class::*)() const>(
-                &Class::core))
-        .def("depth_range",
-            static_cast<DepthRange const& (
-                Class::*)() const>(
-                &Class::depth_range));
+        .def(py::init<RenderCameraCore, DepthRange>())
+        .def("core", static_cast<RenderCameraCore const& (Class::*)() const>(
+                         &Class::core))
+        .def("depth_range", static_cast<DepthRange const& (Class::*)() const>(
+                                &Class::depth_range));
   }
   {
     using Class = RenderCameraCore;
-    py::class_<Class>(
-        m, "RenderCameraCore")
+    py::class_<Class>(m, "RenderCameraCore")
         .def(py::init<Class const&>())
-        .def(py::init<::std::string, CameraInfo,
-            ClippingRange,
+        .def(py::init<::std::string, CameraInfo, ClippingRange,
             RigidTransformd>())
-        .def("clipping",
-            static_cast<ClippingRange const& (
-                Class::*)() const>(
-                &Class::clipping))
-        .def("intrinsics",
-            static_cast<CameraInfo const& (
-                Class::*)() const>(
-                &Class::intrinsics))
+        .def("clipping", static_cast<ClippingRange const& (Class::*)() const>(
+                             &Class::clipping))
+        .def("intrinsics", static_cast<CameraInfo const& (Class::*)() const>(
+                               &Class::intrinsics))
         .def("renderer_name",
-            static_cast<::std::string const& (
-                Class::*)() const>(
+            static_cast<::std::string const& (Class::*)() const>(
                 &Class::renderer_name))
         .def("sensor_pose_in_camera_body",
-            static_cast<RigidTransformd const& (
-                Class::*)() const>(
-                &Class::
-                    sensor_pose_in_camera_body));
+            static_cast<RigidTransformd const& (Class::*)() const>(
+                &Class::sensor_pose_in_camera_body));
   }
 
   // TODO(eric.cousineau): Deprecate these.
@@ -269,161 +256,119 @@ void def_geometry_render(py::module m) {
     using Class = RenderEngine;
     const auto& cls_doc = doc.RenderEngine;
     py::class_<Class, PyRenderEngine>(m, "RenderEngine")
-      .def(py::init<>(), cls_doc.ctor.doc)
-      .def("Clone",
-          static_cast<::std::unique_ptr<Class> (
-              Class::*)() const>(
-              &Class::Clone), cls_doc.Clone.doc)
-      .def("RegisterVisual",
-          static_cast<bool (Class::*)(
-              GeometryId, Shape const&,
-              PerceptionProperties const&,
-              RigidTransformd const&, bool)>(
-              &Class::RegisterVisual),
-          py::arg("id"), py::arg("shape"), py::arg("properties"),
-          py::arg("X_WG"), py::arg("needs_updates") = true,
-          cls_doc.RegisterVisual.doc)
-      .def("RemoveGeometry",
-          static_cast<bool (Class::*)(
-              GeometryId)>(
-              &Class::RemoveGeometry),
-          py::arg("id"),
-          cls_doc.RemoveGeometry.doc)
-      .def("has_geometry",
-          static_cast<bool (Class::*)(
-              GeometryId) const>(
-              &Class::has_geometry),
-          py::arg("id"),
-          cls_doc.has_geometry.doc)
-      .def("UpdateViewpoint",
-          static_cast<void (Class::*)(
-              RigidTransformd const&)>(
-              &Class::UpdateViewpoint),
-          py::arg("X_WR"),
-          cls_doc.UpdateViewpoint.doc)
-      .def("RenderColorImage",
-          static_cast<void (Class::*)(
-              ColorRenderCamera const&,
-              ImageRgba8U*) const>(
-              &Class::RenderColorImage),
-          py::arg("camera"), py::arg("color_image_out"),
-          cls_doc.RenderColorImage.doc)
-      .def("RenderDepthImage",
-          static_cast<void (Class::*)(
-              DepthRenderCamera const&,
-              ImageDepth32F*) const>(
-              &Class::RenderDepthImage),
-          py::arg("camera"), py::arg("depth_image_out"),
-          cls_doc.RenderDepthImage.doc)
-      .def("RenderLabelImage",
-          static_cast<void (Class::*)(
-              ColorRenderCamera const&,
-              ImageLabel16I*) const>(
-              &Class::RenderLabelImage),
-          py::arg("camera"), py::arg("label_image_out"),
-          cls_doc.RenderLabelImage.doc)
-      .def("default_render_label",
-          static_cast<RenderLabel (
-              Class::*)() const>(
-              &Class::default_render_label),
-          cls_doc.default_render_label.doc)
-      .def("DoRegisterVisual",
-          static_cast<bool (Class::*)(
-              GeometryId, Shape const&,
-              PerceptionProperties const&,
-              RigidTransformd const&)>(
-              &PyRenderEngine::DoRegisterVisual),
-          py::arg("id"), py::arg("shape"), py::arg("properties"),
-          py::arg("X_WG"),
-          cls_doc.DoRegisterVisual.doc)
-      .def("DoUpdateVisualPose",
-          static_cast<void (Class::*)(
-              GeometryId,
-              RigidTransformd const&)>(
-              &PyRenderEngine::DoUpdateVisualPose),
-          py::arg("id"), py::arg("X_WG"),
-          cls_doc.DoUpdateVisualPose.doc)
-      .def("DoRemoveGeometry",
-          static_cast<bool (Class::*)(
-              GeometryId)>(
-              &PyRenderEngine::DoRemoveGeometry),
-          py::arg("id"),
-          cls_doc.DoRemoveGeometry.doc)
-      .def("DoClone",
-          static_cast<::std::unique_ptr<Class> (
-              Class::*)() const>(
-              &PyRenderEngine::DoClone),
-          cls_doc.DoClone.doc)
-      .def("DoRenderColorImage",
-          static_cast<void (Class::*)(
-              ColorRenderCamera const&,
-              ImageRgba8U*) const>(
-              &PyRenderEngine::DoRenderColorImage),
-          py::arg("camera"), py::arg("color_image_out"),
-          cls_doc.DoRenderColorImage.doc)
-      .def("DoRenderDepthImage",
-          static_cast<void (Class::*)(
-              DepthRenderCamera const&,
-              ImageDepth32F*) const>(
-              &PyRenderEngine::DoRenderDepthImage),
-          py::arg("camera"), py::arg("depth_image_out"),
-          cls_doc.DoRenderLabelImage.doc)
-      .def("DoRenderLabelImage",
-          static_cast<void (Class::*)(
-              ColorRenderCamera const&,
-              ImageLabel16I*) const>(
-              &PyRenderEngine::DoRenderLabelImage),
-          py::arg("camera"), py::arg("label_image_out"),
-          cls_doc.DoRenderLabelImage.doc)
-      .def("GetRenderLabelOrThrow",
-          static_cast<RenderLabel (
-              Class::*)(
-              PerceptionProperties const&) const>(
-              &PyRenderEngine::GetRenderLabelOrThrow),
-          py::arg("properties"),
-          doc.GetRenderLabelOrThrow.doc)
-      .def_static("LabelFromColor",
-          static_cast<RenderLabel (*)(
-              ColorI const&)>(
-              &PyRenderEngine::LabelFromColor),
-          py::arg("color"),
-          doc.LabelFromColor.doc)
-      .def_static("GetColorIFromLabel",
-          static_cast<ColorI (*)(
-              RenderLabel const&)>(
-              &PyRenderEngine::GetColorIFromLabel),
-          py::arg("label"),
-          cls_doc.GetColorIFromLabel.doc)
-      .def_static("GetColorDFromLabel",
-          static_cast<ColorD (*)(
-              RenderLabel const&)>(
-              &PyRenderEngine::GetColorDFromLabel),
-          py::arg("label"),
-          cls_doc.GetColorDFromLabel.doc)
-      .def("SetDefaultLightPosition",
-          static_cast<void (Class::*)(
-              Vector3d const&)>(
-              &PyRenderEngine::SetDefaultLightPosition),
-          py::arg("X_DL"),
-          cls_doc.SetDefaultLightPosition.doc)
-      .def_static("ThrowIfInvalid",
-          static_cast<void (*)(CameraInfo const&,
-              Image<PixelType::kRgba8U> const*,
-              char const*)>(&PyRenderEngine::ThrowIfInvalid),
-          py::arg("intrinsics"), py::arg("image"), py::arg("image_type"),
-          cls_doc.ThrowIfInvalid.doc)
-      .def_static("ThrowIfInvalid",
-          static_cast<void (*)(CameraInfo const&,
-              Image<PixelType::kDepth32F> const*,
-              char const*)>(&PyRenderEngine::ThrowIfInvalid),
-          py::arg("intrinsics"), py::arg("image"), py::arg("image_type"),
-          cls_doc.ThrowIfInvalid.doc)
-      .def_static("ThrowIfInvalid",
-          static_cast<void (*)(CameraInfo const&,
-              Image<PixelType::kLabel16I> const*,
-              char const*)>(&PyRenderEngine::ThrowIfInvalid),
-          py::arg("intrinsics"), py::arg("image"), py::arg("image_type"),
-          cls_doc.ThrowIfInvalid.doc);
+        .def(py::init<>(), cls_doc.ctor.doc)
+        .def("Clone",
+            static_cast<::std::unique_ptr<Class> (Class::*)() const>(
+                &Class::Clone),
+            cls_doc.Clone.doc)
+        .def("RegisterVisual",
+            static_cast<bool (Class::*)(GeometryId, Shape const&,
+                PerceptionProperties const&, RigidTransformd const&, bool)>(
+                &Class::RegisterVisual),
+            py::arg("id"), py::arg("shape"), py::arg("properties"),
+            py::arg("X_WG"), py::arg("needs_updates") = true,
+            cls_doc.RegisterVisual.doc)
+        .def("RemoveGeometry",
+            static_cast<bool (Class::*)(GeometryId)>(&Class::RemoveGeometry),
+            py::arg("id"), cls_doc.RemoveGeometry.doc)
+        .def("has_geometry",
+            static_cast<bool (Class::*)(GeometryId) const>(
+                &Class::has_geometry),
+            py::arg("id"), cls_doc.has_geometry.doc)
+        .def("UpdateViewpoint",
+            static_cast<void (Class::*)(RigidTransformd const&)>(
+                &Class::UpdateViewpoint),
+            py::arg("X_WR"), cls_doc.UpdateViewpoint.doc)
+        .def("RenderColorImage",
+            static_cast<void (Class::*)(ColorRenderCamera const&, ImageRgba8U*)
+                    const>(&Class::RenderColorImage),
+            py::arg("camera"), py::arg("color_image_out"),
+            cls_doc.RenderColorImage.doc)
+        .def("RenderDepthImage",
+            static_cast<void (Class::*)(DepthRenderCamera const&,
+                ImageDepth32F*) const>(&Class::RenderDepthImage),
+            py::arg("camera"), py::arg("depth_image_out"),
+            cls_doc.RenderDepthImage.doc)
+        .def("RenderLabelImage",
+            static_cast<void (Class::*)(ColorRenderCamera const&,
+                ImageLabel16I*) const>(&Class::RenderLabelImage),
+            py::arg("camera"), py::arg("label_image_out"),
+            cls_doc.RenderLabelImage.doc)
+        .def("default_render_label",
+            static_cast<RenderLabel (Class::*)() const>(
+                &Class::default_render_label),
+            cls_doc.default_render_label.doc)
+        .def("DoRegisterVisual",
+            static_cast<bool (Class::*)(GeometryId, Shape const&,
+                PerceptionProperties const&, RigidTransformd const&)>(
+                &PyRenderEngine::DoRegisterVisual),
+            py::arg("id"), py::arg("shape"), py::arg("properties"),
+            py::arg("X_WG"), cls_doc.DoRegisterVisual.doc)
+        .def("DoUpdateVisualPose",
+            static_cast<void (Class::*)(GeometryId, RigidTransformd const&)>(
+                &PyRenderEngine::DoUpdateVisualPose),
+            py::arg("id"), py::arg("X_WG"), cls_doc.DoUpdateVisualPose.doc)
+        .def("DoRemoveGeometry",
+            static_cast<bool (Class::*)(GeometryId)>(
+                &PyRenderEngine::DoRemoveGeometry),
+            py::arg("id"), cls_doc.DoRemoveGeometry.doc)
+        .def("DoClone",
+            static_cast<::std::unique_ptr<Class> (Class::*)() const>(
+                &PyRenderEngine::DoClone),
+            cls_doc.DoClone.doc)
+        .def("DoRenderColorImage",
+            static_cast<void (Class::*)(ColorRenderCamera const&, ImageRgba8U*)
+                    const>(&PyRenderEngine::DoRenderColorImage),
+            py::arg("camera"), py::arg("color_image_out"),
+            cls_doc.DoRenderColorImage.doc)
+        .def("DoRenderDepthImage",
+            static_cast<void (Class::*)(DepthRenderCamera const&,
+                ImageDepth32F*) const>(&PyRenderEngine::DoRenderDepthImage),
+            py::arg("camera"), py::arg("depth_image_out"),
+            cls_doc.DoRenderLabelImage.doc)
+        .def("DoRenderLabelImage",
+            static_cast<void (Class::*)(ColorRenderCamera const&,
+                ImageLabel16I*) const>(&PyRenderEngine::DoRenderLabelImage),
+            py::arg("camera"), py::arg("label_image_out"),
+            cls_doc.DoRenderLabelImage.doc)
+        .def("GetRenderLabelOrThrow",
+            static_cast<RenderLabel (Class::*)(PerceptionProperties const&)
+                    const>(&PyRenderEngine::GetRenderLabelOrThrow),
+            py::arg("properties"), doc.GetRenderLabelOrThrow.doc)
+        .def_static("LabelFromColor",
+            static_cast<RenderLabel (*)(ColorI const&)>(
+                &PyRenderEngine::LabelFromColor),
+            py::arg("color"), doc.LabelFromColor.doc)
+        .def_static("GetColorIFromLabel",
+            static_cast<ColorI (*)(RenderLabel const&)>(
+                &PyRenderEngine::GetColorIFromLabel),
+            py::arg("label"), cls_doc.GetColorIFromLabel.doc)
+        .def_static("GetColorDFromLabel",
+            static_cast<ColorD (*)(RenderLabel const&)>(
+                &PyRenderEngine::GetColorDFromLabel),
+            py::arg("label"), cls_doc.GetColorDFromLabel.doc)
+        .def("SetDefaultLightPosition",
+            static_cast<void (Class::*)(Vector3d const&)>(
+                &PyRenderEngine::SetDefaultLightPosition),
+            py::arg("X_DL"), cls_doc.SetDefaultLightPosition.doc)
+        .def_static("ThrowIfInvalid",
+            static_cast<void (*)(CameraInfo const&,
+                Image<PixelType::kRgba8U> const*, char const*)>(
+                &PyRenderEngine::ThrowIfInvalid),
+            py::arg("intrinsics"), py::arg("image"), py::arg("image_type"),
+            cls_doc.ThrowIfInvalid.doc)
+        .def_static("ThrowIfInvalid",
+            static_cast<void (*)(CameraInfo const&,
+                Image<PixelType::kDepth32F> const*, char const*)>(
+                &PyRenderEngine::ThrowIfInvalid),
+            py::arg("intrinsics"), py::arg("image"), py::arg("image_type"),
+            cls_doc.ThrowIfInvalid.doc)
+        .def_static("ThrowIfInvalid",
+            static_cast<void (*)(CameraInfo const&,
+                Image<PixelType::kLabel16I> const*, char const*)>(
+                &PyRenderEngine::ThrowIfInvalid),
+            py::arg("intrinsics"), py::arg("image"), py::arg("image_type"),
+            cls_doc.ThrowIfInvalid.doc);
   }
 
   py::class_<RenderEngineVtkParams>(

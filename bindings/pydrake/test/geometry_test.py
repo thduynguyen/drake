@@ -584,10 +584,57 @@ class TestGeometry(unittest.TestCase):
         ...
 
     def test_render_engine_api(self):
-
         class DummyRenderEngine(mut.RenderEngine):
             """Mirror of C++ DummyRenderEngine."""
-            def __init__(self):
-                mut.RenderEngine.__init__(self)
-                self._color_camera =
 
+            def __init__(self, render_label=None):
+                mut.RenderEngine.__init__(self, render_label)
+                self._force_accept = False
+                self._registered_geometries = set()
+                self._updated_ids = {}
+                self._include_group_name = "in_test"
+                self._X_WC = RigidTransform_[float]()
+                self._simple_color_count = 0
+                self._simple_depth_count = 0
+                self._simple_label_count = 0
+                self._color_props = mut.render.CameraProperties()
+                self._depth_props = mut.render.DepthCameraProperties()
+                self._label_props = mut.render.CameraProperties()
+
+            def UpdateViewPoint(self, X_WC):
+                self._X_WC = X_WC
+
+            def RenderColorImage(self, camera, color_image_out):
+                self._simple_color_count += 1
+                self._color_props = camera
+
+            def RenderDepthImage(self, camera, depth_image_out):
+                self._simple_depth_count += 1
+                self._depth_props = camera
+
+            def RenderLabelImage(self, camera, label_image_out):
+                self._simple_label_count += 1
+                self._label_props = camera
+
+            def ImplementGeometry(self, shape, user_data):
+                pass
+
+            def DoRegisterVisual(self, id, shape, properties, X_WG):
+                mut.GetRenderLabelOrThrow(properties)
+                if self._force_accept or properties.HasGroup(
+                    self._include_group_name
+                ):
+                    self._registered_geometries.add(id)
+                    return True
+                return False
+
+            def DoUpdateVisualPose(self, id, X_WG):
+                self._updated_ids[id] = X_WG
+
+            def DoRemoveGeometry(self, id):
+                self._registered_geometries.remove(id)
+
+            def DoClone(self):
+                return copy.deepcopy(self)
+
+        engine = DummyRenderEngine()
