@@ -46,13 +46,13 @@ using math::RigidTransformd;
 using systems::Context;
 using systems::LeafSystem;
 using systems::sensors::CameraInfo;
+using systems::sensors::ColorD;
+using systems::sensors::ColorI;
+using systems::sensors::Image;
 using systems::sensors::ImageDepth32F;
 using systems::sensors::ImageLabel16I;
 using systems::sensors::ImageRgba8U;
-using systems::sensors::ColorI;
-using systems::sensors::ColorD;
 using systems::sensors::PixelType;
-using systems::sensors::Image;
 
 template <typename Class>
 void BindIdentifier(py::module m, const std::string& name, const char* id_doc) {
@@ -76,8 +76,8 @@ void BindIdentifier(py::module m, const std::string& name, const char* id_doc) {
 class PyRenderEngine : public py::wrapper<RenderEngine> {
  public:
   using Base = RenderEngine;
-  using WrappedBase = py::wrapper<Base>;
-  PyRenderEngine() : WrappedBase() {}
+  using BaseWrapper = py::wrapper<Base>;
+  PyRenderEngine() : BaseWrapper() {}
 
   void UpdateViewpoint(RigidTransformd const& X_WR) override {
     PYBIND11_OVERLOAD_PURE(void, Base, UpdateViewpoint, X_WR);
@@ -151,7 +151,12 @@ class PyRenderEngine : public py::wrapper<RenderEngine> {
   using Base::GetRenderLabelOrThrow;
   using Base::LabelFromColor;
   using Base::SetDefaultLightPosition;
-  using Base::ThrowIfInvalid;
+
+  template <typename ImageType>
+  static void ThrowIfInvalid(const systems::sensors::CameraInfo& intrinsics,
+      const ImageType* image, const char* image_type) {
+    return Base::ThrowIfInvalid<ImageType>(intrinsics, image, image_type);
+  }
 };
 
 void def_geometry_render(py::module m) {
@@ -168,8 +173,8 @@ void def_geometry_render(py::module m) {
     using Class = ClippingRange;
     const auto& cls_doc = doc.ClippingRange;
     py::class_<Class>(m, "ClippingRange", cls_doc.doc)
-        .def(py::init<Class const&>(), cls_doc.ctor.doc_1args)
-        .def(py::init<double, double>(), cls_doc.ctor.doc_2args)
+        .def(py::init<Class const&>(), cls_doc.ctor.doc)
+        .def(py::init<double, double>(), cls_doc.near.doc, cls_doc.far.doc)
         .def("far", static_cast<double (Class::*)() const>(&Class::far),
             cls_doc.far.doc)
         .def("near", static_cast<double (Class::*)() const>(&Class::near),
@@ -177,9 +182,11 @@ void def_geometry_render(py::module m) {
   }
   {
     using Class = ColorRenderCamera;
+    const auto& cls_doc = doc.ColorRenderCamera;
     py::class_<Class>(m, "ColorRenderCamera", cls_doc.doc)
-        .def(py::init<Class const&>())
-        .def(py::init<RenderCameraCore, bool>())
+        .def(py::init<Class const&>(), cls_doc.ctor.doc)
+        .def(py::init<RenderCameraCore, bool>(), cls_doc.core.doc,
+            cls_doc.show_window.doc)
         .def("core", static_cast<RenderCameraCore const& (Class::*)() const>(
                          &Class::core))
         .def("show_window",
@@ -283,17 +290,17 @@ void def_geometry_render(py::module m) {
             static_cast<void (Class::*)(ColorRenderCamera const&, ImageRgba8U*)
                     const>(&Class::RenderColorImage),
             py::arg("camera"), py::arg("color_image_out"),
-            cls_doc.RenderColorImage.doc)
+            cls_doc.RenderColorImage.doc_2args)
         .def("RenderDepthImage",
             static_cast<void (Class::*)(DepthRenderCamera const&,
                 ImageDepth32F*) const>(&Class::RenderDepthImage),
             py::arg("camera"), py::arg("depth_image_out"),
-            cls_doc.RenderDepthImage.doc)
+            cls_doc.RenderDepthImage.doc_was_unable_to_choose_unambiguous_names)
         .def("RenderLabelImage",
             static_cast<void (Class::*)(ColorRenderCamera const&,
                 ImageLabel16I*) const>(&Class::RenderLabelImage),
             py::arg("camera"), py::arg("label_image_out"),
-            cls_doc.RenderLabelImage.doc)
+            cls_doc.RenderLabelImage.doc_2args)
         .def("default_render_label",
             static_cast<RenderLabel (Class::*)() const>(
                 &Class::default_render_label),
@@ -334,11 +341,11 @@ void def_geometry_render(py::module m) {
         .def("GetRenderLabelOrThrow",
             static_cast<RenderLabel (Class::*)(PerceptionProperties const&)
                     const>(&PyRenderEngine::GetRenderLabelOrThrow),
-            py::arg("properties"), doc.GetRenderLabelOrThrow.doc)
+            py::arg("properties"), cls_doc.GetRenderLabelOrThrow.doc)
         .def_static("LabelFromColor",
             static_cast<RenderLabel (*)(ColorI const&)>(
                 &PyRenderEngine::LabelFromColor),
-            py::arg("color"), doc.LabelFromColor.doc)
+            py::arg("color"), cls_doc.LabelFromColor.doc)
         .def_static("GetColorIFromLabel",
             static_cast<ColorI (*)(RenderLabel const&)>(
                 &PyRenderEngine::GetColorIFromLabel),
@@ -354,19 +361,19 @@ void def_geometry_render(py::module m) {
         .def_static("ThrowIfInvalid",
             static_cast<void (*)(CameraInfo const&,
                 Image<PixelType::kRgba8U> const*, char const*)>(
-                &PyRenderEngine::ThrowIfInvalid),
+                &PyRenderEngine::ThrowIfInvalid<Image<PixelType::kRgba8U>>),
             py::arg("intrinsics"), py::arg("image"), py::arg("image_type"),
             cls_doc.ThrowIfInvalid.doc)
         .def_static("ThrowIfInvalid",
             static_cast<void (*)(CameraInfo const&,
                 Image<PixelType::kDepth32F> const*, char const*)>(
-                &PyRenderEngine::ThrowIfInvalid),
+                &PyRenderEngine::ThrowIfInvalid<Image<PixelType::kDepth32F>>),
             py::arg("intrinsics"), py::arg("image"), py::arg("image_type"),
             cls_doc.ThrowIfInvalid.doc)
         .def_static("ThrowIfInvalid",
             static_cast<void (*)(CameraInfo const&,
                 Image<PixelType::kLabel16I> const*, char const*)>(
-                &PyRenderEngine::ThrowIfInvalid),
+                &PyRenderEngine::ThrowIfInvalid<Image<PixelType::kLabel16I>>),
             py::arg("intrinsics"), py::arg("image"), py::arg("image_type"),
             cls_doc.ThrowIfInvalid.doc);
   }

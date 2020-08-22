@@ -584,11 +584,11 @@ class TestGeometry(unittest.TestCase):
         ...
 
     def test_render_engine_api(self):
-        class DummyRenderEngine(mut.RenderEngine):
+        class DummyRenderEngine(mut.render.RenderEngine):
             """Mirror of C++ DummyRenderEngine."""
 
             def __init__(self, render_label=None):
-                mut.RenderEngine.__init__(self, render_label)
+                mut.render.RenderEngine.__init__(self)
                 self._force_accept = False
                 self._registered_geometries = set()
                 self._updated_ids = {}
@@ -597,9 +597,26 @@ class TestGeometry(unittest.TestCase):
                 self._simple_color_count = 0
                 self._simple_depth_count = 0
                 self._simple_label_count = 0
-                self._color_props = mut.render.CameraProperties()
-                self._depth_props = mut.render.DepthCameraProperties()
-                self._label_props = mut.render.CameraProperties()
+                self._color_props = mut.render.CameraProperties(
+                    width=320,
+                    height=240,
+                    fov_y=pi / 6,
+                    renderer_name="test_renderer",
+                )
+                self._depth_props = mut.render.DepthCameraProperties(
+                    width=320,
+                    height=240,
+                    fov_y=pi / 6,
+                    renderer_name="test_renderer",
+                    z_near=0.1,
+                    z_far=5.0,
+                )
+                self._label_props = mut.render.CameraProperties(
+                    width=320,
+                    height=240,
+                    fov_y=pi / 6,
+                    renderer_name="test_renderer",
+                )
 
             def UpdateViewPoint(self, X_WC):
                 self._X_WC = X_WC
