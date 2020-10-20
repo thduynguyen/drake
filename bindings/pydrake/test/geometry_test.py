@@ -1,6 +1,7 @@
 import pydrake.geometry as mut
 import pydrake.geometry._testing as mut_testing
 
+import copy
 import sys
 import unittest
 import warnings
@@ -652,6 +653,7 @@ class TestGeometry(unittest.TestCase):
                 self._registered_geometries.remove(id)
 
             def DoClone(self):
-                return copy.deepcopy(self)
+                return copy.copy(self)
 
         engine = DummyRenderEngine()
+        engine_clone = engine.DoClone()
